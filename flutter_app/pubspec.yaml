@@ -1,0 +1,43 @@
+name: english_learning_app
+description: Flutter versiyonu - İngilizce öğrenme uygulaması
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # HTTP istekleri için
+  http: ^1.1.0
+  
+  # State yönetimi için
+  provider: ^6.1.1
+  
+  # Tarih işlemleri için
+  intl: ^0.19.0
+  
+  # UI bileşenleri için
+  cupertino_icons: ^1.0.6
+  table_calendar: ^3.0.9
+  flutter_svg: ^2.0.9
+  
+  # Sesli sohbet için
+  speech_to_text: ^6.6.0
+  flutter_tts: ^4.0.2
+  permission_handler: ^11.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  
+  # Assets (gerekirse)
+  # assets:
+  #   - images/
+
