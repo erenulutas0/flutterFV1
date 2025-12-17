@@ -20,12 +20,14 @@ class _PracticeScreenState extends State<PracticeScreen> {
   
   Word? _selectedWord;
   List<String> _generatedSentences = [];
+  List<String> _aiTranslations = []; // Store AI translations separately
   List<TranslationResult> _translationResults = [];
   bool _isGenerating = false;
-  bool _isChecking = false;
   bool _isSaving = false;
   String _selectedMode = 'select'; // 'select' or 'manual'
   String _searchQuery = '';
+  Set<String> _selectedLevels = {'B1'}; // A1, A2, B1, B2, C1, C2
+  Set<String> _selectedLengths = {'medium'}; // short, medium, long
 
   @override
   void initState() {
@@ -61,6 +63,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
     setState(() {
       _isGenerating = true;
       _generatedSentences = [];
+      _aiTranslations = [];
       _translationResults = [];
     });
 
@@ -69,7 +72,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
       final response = await http.post(
         Uri.parse('http://localhost:8082/api/chatbot/generate-sentences'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'word': word}),
+        body: json.encode({
+          'word': word,
+          'levels': _selectedLevels.toList(),
+          'lengths': _selectedLengths.toList(),
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -77,6 +84,14 @@ class _PracticeScreenState extends State<PracticeScreen> {
         final sentences = (data['sentences'] as List)
             .map((s) => s.toString())
             .toList();
+        
+        // Get translations from backend (if available)
+        List<String> translations = [];
+        if (data['translations'] != null) {
+          translations = (data['translations'] as List)
+              .map((t) => t.toString())
+              .toList();
+        }
         
         setState(() {
           // Dispose old controllers
@@ -86,16 +101,19 @@ class _PracticeScreenState extends State<PracticeScreen> {
           _translationControllers.clear();
           
           _generatedSentences = sentences;
+          _aiTranslations = translations; // Store AI translations but don't auto-fill
           _translationResults = List.generate(
             sentences.length,
             (index) {
-              final controller = TextEditingController();
+              final controller = TextEditingController(); // Empty by default
               _translationControllers[index] = controller;
               return TranslationResult(
                 sentence: sentences[index],
-                userTranslation: '',
+                userTranslation: '', // Empty by default
                 isCorrect: null,
                 feedback: '',
+                correctTranslation: '',
+                isChecking: false,
               );
             },
           );
@@ -148,25 +166,13 @@ class _PracticeScreenState extends State<PracticeScreen> {
     });
 
     try {
-      // Extract meanings from sentences (text in parentheses)
-      List<String> meanings = [];
-      for (String sentence in _generatedSentences) {
-        final pattern = RegExp(r'\(([^)]+)\)');
-        final match = pattern.firstMatch(sentence);
-        if (match != null) {
-          final meaning = match.group(1)?.trim() ?? '';
-          if (meaning.isNotEmpty && !meanings.contains(meaning)) {
-            meanings.add(meaning);
-          }
-        }
-      }
-
+      // No need to extract meanings from sentences anymore (they don't contain Turkish translations)
       final response = await http.post(
         Uri.parse('http://localhost:8082/api/chatbot/save-to-today'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'englishWord': word,
-          'meanings': meanings,
+          'meanings': [], // Empty since sentences no longer contain Turkish translations
           'sentences': _generatedSentences,
         }),
       );
@@ -216,7 +222,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
     }
 
     setState(() {
-      _isChecking = true;
+      _translationResults[index].isChecking = true;
       _translationResults[index].userTranslation = userTranslation;
     });
 
@@ -236,6 +242,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
           _translationResults[index].isCorrect = data['isCorrect'] as bool;
           _translationResults[index].feedback = data['feedback'] ?? '';
           _translationResults[index].correctTranslation = data['correctTranslation'] ?? '';
+          _translationResults[index].isChecking = false;
         });
       } else {
         throw Exception('Failed to check translation');
@@ -248,11 +255,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
             backgroundColor: AppTheme.accentRed,
           ),
         );
-      }
-    } finally {
-      if (mounted) {
         setState(() {
-          _isChecking = false;
+          _translationResults[index].isChecking = false;
         });
       }
     }
@@ -372,6 +376,106 @@ class _PracticeScreenState extends State<PracticeScreen> {
                             ),
                           ],
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Level and Length Selection
+              Card(
+                color: AppTheme.darkSurface,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Seviye ve Uzunluk',
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Level Selection
+                      Text(
+                        'Seviye:',
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((level) {
+                          final isSelected = _selectedLevels.contains(level);
+                          return ChoiceChip(
+                            label: Text(level),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedLevels.add(level);
+                                } else {
+                                  _selectedLevels.remove(level);
+                                  // En az bir seviye seçili olmalı
+                                  if (_selectedLevels.isEmpty) {
+                                    _selectedLevels.add('B1');
+                                  }
+                                }
+                              });
+                            },
+                            selectedColor: AppTheme.primaryPurple,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : AppTheme.textPrimary,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                      // Length Selection
+                      Text(
+                        'Uzunluk:',
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          {'value': 'short', 'label': 'Kısa (5-8 kelime)'},
+                          {'value': 'medium', 'label': 'Orta (9-15 kelime)'},
+                          {'value': 'long', 'label': 'Uzun (16+ kelime)'},
+                        ].map((item) {
+                          final isSelected = _selectedLengths.contains(item['value']);
+                          return ChoiceChip(
+                            label: Text(item['label']!),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedLengths.add(item['value']!);
+                                } else {
+                                  _selectedLengths.remove(item['value']);
+                                  // En az bir uzunluk seçili olmalı
+                                  if (_selectedLengths.isEmpty) {
+                                    _selectedLengths.add('medium');
+                                  }
+                                }
+                              });
+                            },
+                            selectedColor: AppTheme.primaryPurple,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : AppTheme.textPrimary,
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ],
                   ),
@@ -582,7 +686,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // English Sentence
+            // English Sentence with Translate Button
             Row(
               children: [
                 Expanded(
@@ -595,6 +699,29 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     ),
                   ),
                 ),
+                // Translate Button
+                if (index < _aiTranslations.length && _aiTranslations[index].isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _translationControllers[index]?.text = _aiTranslations[index];
+                        result.userTranslation = _aiTranslations[index];
+                        // Reset result when AI translation is loaded
+                        if (result.isCorrect != null) {
+                          result.isCorrect = null;
+                          result.feedback = '';
+                          result.correctTranslation = '';
+                          result.isChecking = false;
+                        }
+                      });
+                    },
+                    icon: const Icon(Icons.translate, size: 18),
+                    label: const Text('Çevir'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.primaryPurple,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                  ),
                 if (isCorrect == true)
                   const Icon(Icons.check_circle, color: AppTheme.accentGreen)
                 else if (isCorrect == false)
@@ -616,11 +743,23 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 suffixIcon: _translationControllers[index]?.text.isNotEmpty == true && result.isCorrect == null
-                    ? IconButton(
-                        icon: const Icon(Icons.check),
-                        onPressed: () => _checkTranslation(index, _translationControllers[index]!.text),
-                        color: AppTheme.primaryPurple,
-                      )
+                    ? result.isChecking == true
+                        ? const Padding(
+                            padding: EdgeInsets.all(12.0),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.primaryPurple,
+                              ),
+                            ),
+                          )
+                        : IconButton(
+                            icon: const Icon(Icons.check),
+                            onPressed: () => _checkTranslation(index, _translationControllers[index]!.text),
+                            color: AppTheme.primaryPurple,
+                          )
                     : null,
               ),
               onChanged: (value) {
@@ -631,15 +770,16 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     result.isCorrect = null;
                     result.feedback = '';
                     result.correctTranslation = '';
+                    result.isChecking = false;
                   }
                 });
               },
               onSubmitted: (value) {
-                if (value.trim().isNotEmpty) {
+                if (value.trim().isNotEmpty && result.isChecking != true) {
                   _checkTranslation(index, value);
                 }
               },
-              enabled: !_isChecking,
+              enabled: result.isChecking != true,
             ),
 
             // Feedback
@@ -708,6 +848,7 @@ class TranslationResult {
   bool? isCorrect;
   String feedback;
   String correctTranslation;
+  bool isChecking;
 
   TranslationResult({
     required this.sentence,
@@ -715,6 +856,7 @@ class TranslationResult {
     this.isCorrect,
     required this.feedback,
     this.correctTranslation = '',
+    this.isChecking = false,
   });
 }
 

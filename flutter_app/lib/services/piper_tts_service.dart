@@ -31,7 +31,7 @@ class PiperTtsService {
   /// Returns audio data as Uint8List (WAV format)
   Future<Uint8List?> synthesize(
     String text, {
-    String voice = 'lessac', // lessac, amy, or alan
+    String voice = 'amy', // default voice changed to 'amy' (safe choice)
   }) async {
     try {
       final response = await http.post(
@@ -44,7 +44,19 @@ class PiperTtsService {
       ).timeout(const Duration(seconds: 30));
       
       if (response.statusCode == 200) {
-        return response.bodyBytes;
+        // --- DEĞİŞİKLİK BURADA ---
+        // Backend artık direkt dosya değil, JSON içinde Base64 gönderiyor.
+        // Önce JSON'ı çözüyoruz:
+        final Map<String, dynamic> data = json.decode(response.body);
+        
+        if (data.containsKey('audio')) {
+          String base64String = data['audio'];
+          // Base64 string'i tekrar byte dizisine (ses dosyasına) çeviriyoruz
+          return base64Decode(base64String);
+        } else {
+          debugPrint('Piper TTS response missing "audio" key');
+          return null;
+        }
       } else {
         debugPrint('Piper TTS synthesis failed: ${response.statusCode}');
         debugPrint('Response: ${response.body}');
@@ -77,8 +89,4 @@ class PiperTtsService {
     }
   }
 }
-
-
-
-
 

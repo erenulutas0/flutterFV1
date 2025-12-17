@@ -2,13 +2,9 @@ package com.ingilizce.calismaapp.controller;
 
 import com.ingilizce.calismaapp.service.PiperTtsService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,7 +18,7 @@ public class TtsController {
     @PostMapping("/synthesize")
     public ResponseEntity<?> synthesize(@RequestBody Map<String, String> request) {
         String text = request.get("text");
-        String voice = request.get("voice"); // Optional: lessac, amy, alan
+        String voice = request.get("voice"); 
         
         if (text == null || text.trim().isEmpty()) {
             Map<String, Object> error = new HashMap<>();
@@ -31,32 +27,25 @@ public class TtsController {
         }
         
         try {
-            // Check if Piper TTS is available
             if (!piperTtsService.isAvailable()) {
                 Map<String, Object> error = new HashMap<>();
-                error.put("error", "Piper TTS is not available. Please install Piper TTS.");
+                error.put("error", "Piper TTS is not available.");
                 error.put("available", false);
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
+                return ResponseEntity.status(503).body(error);
             }
             
-            // Generate speech
+            // Service bize zaten Base64 string veriyor, onu hiç bozmadan JSON'a koyuyoruz.
+            // (Eskiden decode edip byte[] yapıyorduk, artık gerek yok)
             String audioBase64 = piperTtsService.synthesizeSpeech(text.trim(), voice);
             
-            // Decode and return as WAV file
-            byte[] audioData = Base64.getDecoder().decode(audioBase64);
+            Map<String, String> response = new HashMap<>();
+            response.put("audio", audioBase64); // "audio" anahtarı ile gönderiyoruz
             
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "speech.wav");
-            headers.setContentLength(audioData.length);
+            return ResponseEntity.ok(response);
             
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(audioData);
-                    
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
-            error.put("error", "Failed to synthesize speech: " + e.getMessage());
+            error.put("error", "Failed to synthesize: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(error);
         }
@@ -68,12 +57,6 @@ public class TtsController {
         boolean available = piperTtsService.isAvailable();
         status.put("available", available);
         status.put("voices", new String[]{"lessac", "amy", "alan"});
-        
-        if (!available) {
-            status.put("message", "Piper TTS is not installed. Please install it to use high-quality TTS.");
-        }
-        
         return ResponseEntity.ok(status);
     }
 }
-

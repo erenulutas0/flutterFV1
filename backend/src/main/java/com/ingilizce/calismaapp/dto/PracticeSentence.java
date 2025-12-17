@@ -5,7 +5,8 @@ package com.ingilizce.calismaapp.dto;
  */
 public record PracticeSentence(
     String englishSentence,  // İngilizce cümle
-    String turkishTranslation // O cümledeki hedef kelime/frazın Türkçe çevirisi (1-3 kelime)
+    String turkishTranslation, // O cümledeki hedef kelime/frazın Türkçe çevirisi (1-3 kelime)
+    String turkishFullTranslation // Tüm cümlenin Türkçe çevirisi (nullable for backward compatibility)
 ) {}
 
 

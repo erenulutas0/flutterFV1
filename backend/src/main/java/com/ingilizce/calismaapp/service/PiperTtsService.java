@@ -210,14 +210,14 @@ public class PiperTtsService {
         
         for (String path : pathsToTry) {
              File file = new File(path);
-             if (file.exists() && file.canExecute()) {
-                 return file.getAbsolutePath();
-             }
+            if (file.exists() && file.canExecute()) {
+                return file.getAbsolutePath();
+            }
              // Check if it's just a command available in PATH
              if (!path.contains(File.separator) && !path.contains("/") && !path.contains("\\")) {
                  return path;
-             }
-        }
+                }
+            }
         
         return "piper";
     }

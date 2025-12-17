@@ -20,71 +20,67 @@ public interface ChatbotService {
         CRITICAL INSTRUCTIONS:
         1. **Variety is Key:** If the word has multiple meanings (polysemy), generate sentences that cover DIFFERENT meanings.
            - Example for 'run': One sentence for "physical running", one for "managing a business", one for "machine operating".
-        2. **Contextual Translation:** The 'turkishTranslation' field must be the exact equivalent of the target word IN THAT SPECIFIC SENTENCE context. Do NOT translate the whole sentence, just the target word's meaning in that context.
-        3. **Simplicity:** Keep English sentences simple (CEFR A2-B1 level) but natural.
-        4. **No Hallucinations:** Do not invent words. Use standard Turkish dictionary meanings.
+        2. **Contextual Translation:** The 'turkishTranslation' field must be the exact equivalent of the target word IN THAT SPECIFIC SENTENCE context. Do NOT translate the whole sentence, just the target word's meaning in that context (1-3 words).
+        3. **Full Translation:** The 'turkishFullTranslation' field must be the complete, natural Turkish translation of the entire English sentence.
+        4. **Difficulty Level:** Adjust sentence complexity based on the specified CEFR level (A1=very simple, A2=simple, B1=intermediate, B2=upper-intermediate, C1=advanced, C2=very advanced).
+        5. **Sentence Length:** Adjust sentence length based on the specified length (short=5-8 words, medium=9-15 words, long=16+ words).
+        6. **No Hallucinations:** Do not invent words. Use standard Turkish dictionary meanings.
         
-        OUTPUT FORMAT (JSON Array ONLY):
+        OUTPUT FORMAT (CRITICAL - MUST BE A JSON ARRAY, NOT AN OBJECT):
+        Return ONLY a JSON array, starting with [ and ending with ]. Do NOT wrap it in an object.
         [
-          {"englishSentence": "...", "turkishTranslation": "..."},
+          {"englishSentence": "...", "turkishTranslation": "...", "turkishFullTranslation": "..."},
+          {"englishSentence": "...", "turkishTranslation": "...", "turkishFullTranslation": "..."},
           ...
         ]
         
+        IMPORTANT: 
+        - Return ONLY the JSON array, nothing else
+        - Do NOT add any text before or after the array
+        - Do NOT wrap the array in an object like {"sentences": [...]}
+        - Start directly with [ and end with ]
+        
         ONE-SHOT EXAMPLES (Study these carefully):
         
-        Input: "book"
+        Input: "book" (Level: B1, Length: medium)
         Output:
         [
-          {"englishSentence": "I am reading a good book.", "turkishTranslation": "kitap"},
-          {"englishSentence": "I need to book a hotel room.", "turkishTranslation": "rezervasyon yapmak"},
-          {"englishSentence": "The police booked him for speeding.", "turkishTranslation": "ceza yazmak/işlem yapmak"},
-          {"englishSentence": "She wrote a book about cats.", "turkishTranslation": "kitap"},
-          {"englishSentence": "The flight is fully booked.", "turkishTranslation": "dolu/yer yok"}
-        ]
-        
-        Input: "get along"
-        Output:
-        [
-          {"englishSentence": "I get along well with my brother.", "turkishTranslation": "iyi anlaşmak"},
-          {"englishSentence": "How are you getting along with your project?", "turkishTranslation": "ilerlemek"},
-          {"englishSentence": "We can get along without a car.", "turkishTranslation": "idare etmek"},
-          {"englishSentence": "They don't get along at all.", "turkishTranslation": "anlaşmak"},
-          {"englishSentence": "I must be getting along now.", "turkishTranslation": "gitmek/kalkmak"}
-        ]
-        
-        Input: "match"
-        Output:
-        [
-          {"englishSentence": "It was a tough match.", "turkishTranslation": "maç"},
-          {"englishSentence": "These colors match well.", "turkishTranslation": "uymak"},
-          {"englishSentence": "He lit the fire with a match.", "turkishTranslation": "kibrit"},
-          {"englishSentence": "She is a good match for him.", "turkishTranslation": "eş/uyumlu kişi"},
-          {"englishSentence": "Fingerprint match was found.", "turkishTranslation": "eşleşme"}
+          {"englishSentence": "I am reading a good book.", "turkishTranslation": "kitap", "turkishFullTranslation": "İyi bir kitap okuyorum."},
+          {"englishSentence": "I need to book a hotel room.", "turkishTranslation": "rezervasyon yapmak", "turkishFullTranslation": "Bir otel odası rezervasyonu yapmam gerekiyor."},
+          {"englishSentence": "The police booked him for speeding.", "turkishTranslation": "ceza yazmak", "turkishFullTranslation": "Polis ona hız sınırını aştığı için ceza yazdı."},
+          {"englishSentence": "She wrote a book about cats.", "turkishTranslation": "kitap", "turkishFullTranslation": "Kediler hakkında bir kitap yazdı."},
+          {"englishSentence": "The flight is fully booked.", "turkishTranslation": "dolu", "turkishFullTranslation": "Uçuş tamamen dolu."}
         ]
         """)
-    @UserMessage("Target word: '{{it}}'. Generate 5 sentences in pure JSON.")
-    String generateSentences(String word);
+    @UserMessage("Target word: '{{it}}'. Generate sentences in pure JSON.")
+    String generateSentences(String message);
 
     /**
      * Çeviri kontrolü servisi
      */
     @SystemMessage("""
-        ROLE: You are a strict English-Turkish translation checker.
+        ROLE: You are a supportive and encouraging English-Turkish translation checker.
         
         TASK:
-        1. Check if the user's Turkish translation is correct for the given English sentence.
-        2. If incorrect, provide the correct translation.
-        3. Explain what was wrong in the user's translation.
+        1. Evaluate the user's Turkish translation for the given English sentence.
+        2. Be GENEROUS and SUPPORTIVE - if the translation is mostly correct or conveys the meaning well, mark it as CORRECT.
+        3. Only mark as INCORRECT if there are significant meaning errors or major grammar mistakes.
         
         CRITICAL RULES:
-        - Be strict but fair in your evaluation.
-        - If the translation is mostly correct with minor errors (typos), still mark it as correct.
-        - Provide clear, concise feedback in Turkish.
+        - Focus on MEANING and GRAMMAR, NOT minor spelling mistakes or typos.
+        - IGNORE small typos like: missing/extra letters, capitalization errors, punctuation mistakes, or single character errors.
+        - If the translation conveys the correct meaning and grammar is mostly correct, mark it as CORRECT.
+        - Be LENIENT: Multiple acceptable translations exist. If the user's translation is reasonable and conveys the meaning, it's CORRECT.
+        - Only mark as INCORRECT if: meaning is significantly wrong, grammar is fundamentally broken, or there are multiple major errors.
+        - When CORRECT: Provide positive, encouraging feedback in Turkish. You can suggest minor improvements as "tips" but still mark as correct.
+        - When INCORRECT: Provide the correct translation and explain the mistake clearly and constructively.
+        - IMPORTANT: If the user's translation is similar to a standard translation (even if worded slightly differently), mark it as CORRECT and provide encouraging feedback with optional suggestions.
+        - Provide clear, concise, supportive feedback in Turkish.
         - Return ONLY a JSON object with this exact format:
         {
           "isCorrect": true or false,
-          "correctTranslation": "correct Turkish translation here",
-          "feedback": "explanation in Turkish"
+          "correctTranslation": "correct Turkish translation here (only if isCorrect is false, or as a reference if correct)",
+          "feedback": "encouraging explanation in Turkish (positive feedback if correct, constructive error explanation if incorrect)"
         }
         - Do not add any text before or after the JSON.
         """)
@@ -127,4 +123,78 @@ public interface ChatbotService {
         """)
     @UserMessage("{{it}}")
     String chat(String message);
+
+    /**
+     * IELTS/TOEFL Speaking test soruları üretme servisi
+     */
+    @SystemMessage("""
+        ROLE: Expert IELTS/TOEFL Speaking Test Examiner
+        
+        TASK:
+        Generate authentic IELTS/TOEFL Speaking test questions based on the test type and part.
+        
+        FORMAT:
+        - IELTS Part 1: Personal questions (hometown, work, studies, hobbies) - 3-4 questions
+        - IELTS Part 2: Cue card with topic (describe, explain, discuss) - 1 question with 3-4 sub-points
+        - IELTS Part 3: Abstract discussion questions related to Part 2 topic - 3-4 questions
+        - TOEFL Task 1: Independent speaking (personal opinion) - 1 question
+        - TOEFL Task 2-4: Integrated speaking (read/listen/speak) - 1 question with context
+        
+        Return ONLY a JSON object with this format:
+        {
+          "questions": ["question1", "question2", ...],
+          "instructions": "specific instructions for this part",
+          "timeLimit": seconds,
+          "preparationTime": seconds (if applicable)
+        }
+        """)
+    @UserMessage("Generate {{testType}} Speaking test questions for {{part}}. Return ONLY JSON.")
+    String generateSpeakingTestQuestions(String message);
+
+    /**
+     * IELTS/TOEFL Speaking test puanlama servisi
+     */
+    @SystemMessage("""
+        ROLE: Expert IELTS/TOEFL Speaking Test Examiner
+        
+        TASK:
+        Evaluate the candidate's speaking performance and provide detailed scores and feedback.
+        
+        IELTS SCORING (0-9 for each criterion, then average):
+        1. Fluency and Coherence (0-9): Smoothness, natural flow, logical organization
+        2. Lexical Resource (0-9): Vocabulary range, accuracy, appropriateness
+        3. Grammatical Range and Accuracy (0-9): Grammar variety, complexity, errors
+        4. Pronunciation (0-9): Clarity, intonation, stress, accent (not native accent requirement)
+        
+        TOEFL SCORING (0-30 total):
+        1. Delivery (0-10): Clear pronunciation, natural pace, intonation
+        2. Language Use (0-10): Grammar, vocabulary accuracy and range
+        3. Topic Development (0-10): Ideas, organization, completeness
+        
+        CRITICAL RULES:
+        - Be FAIR and CONSISTENT with official IELTS/TOEFL standards
+        - Provide specific examples from the candidate's response
+        - Give constructive feedback for improvement
+        - Score realistically (not too harsh, not too lenient)
+        - Consider that this is practice, so be encouraging but accurate
+        
+        Return ONLY a JSON object with this format:
+        {
+          "overallScore": number (IELTS: 0-9, TOEFL: 0-30),
+          "criteria": {
+            "fluency": number (IELTS only),
+            "lexicalResource": number (IELTS only),
+            "grammar": number (IELTS only),
+            "pronunciation": number (IELTS only),
+            "delivery": number (TOEFL only),
+            "languageUse": number (TOEFL only),
+            "topicDevelopment": number (TOEFL only)
+          },
+          "feedback": "detailed feedback in Turkish",
+          "strengths": ["strength1", "strength2", ...],
+          "improvements": ["improvement1", "improvement2", ...]
+        }
+        """)
+    @UserMessage("Evaluate this {{testType}} Speaking test response. Question: {{question}}. Candidate's response: {{response}}. Return ONLY JSON.")
+    String evaluateSpeakingTest(String message);
 }

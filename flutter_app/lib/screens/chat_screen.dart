@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../theme/app_theme.dart';
 import '../services/piper_tts_service.dart';
+import 'dart:html' as html if (dart.library.html) 'dart:html';
 
 class ChatMessage {
   final String text;
@@ -46,13 +47,24 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _speechInitialized = false;
   bool _piperTtsAvailable = false;
   Timer? _sendTimer; // Timer for auto-sending message after pause
+  
+  // IELTS/TOEFL Speaking Test states
+  String? _testMode; // null, 'IELTS', or 'TOEFL'
+  String? _currentTestPart; // 'part1', 'part2', 'part3' for IELTS, 'task1', 'task2', etc. for TOEFL
+  List<String> _currentQuestions = [];
+  int _currentQuestionIndex = 0;
+  String? _currentQuestion;
+  Map<String, dynamic>? _testResults; // Store test evaluation results
+  bool _isTestActive = false;
+  DateTime? _testStartTime;
+  Timer? _testTimer;
 
   @override
   void initState() {
     super.initState();
     _initializeSpeech();
     _checkPiperTts();
-    // Welcome message
+    // Welcome message (only if not in test mode)
     _messages.add(ChatMessage(
       text: "Hello! I'm Owen, your English conversation tutor. Let's practice English together! How are you today?",
       isUser: false,
@@ -283,12 +295,26 @@ class _ChatScreenState extends State<ChatScreen> {
         Uint8List? audioData = await _piperTtsService.synthesize(cleanedText, voice: piperVoice);
         
         if (audioData != null && audioData.isNotEmpty) {
-          // For web, use data URI; for other platforms, use BytesSource
+          // For web, use Blob URL; for other platforms, use BytesSource
           if (kIsWeb) {
-            // Convert bytes to base64 data URI for web
-            final base64Audio = base64Encode(audioData);
-            final dataUri = 'data:audio/wav;base64,$base64Audio';
-            await _audioPlayer.play(UrlSource(dataUri));
+            // Web için Blob URL kullan (data URI çalışmıyor)
+            try {
+              // dart:html kullanarak Blob oluştur
+              final blob = html.Blob([audioData], 'audio/wav');
+              final url = html.Url.createObjectUrlFromBlob(blob);
+              await _audioPlayer.play(UrlSource(url));
+              
+              // Playback tamamlandığında URL'i temizle
+              StreamSubscription? urlCleanupSubscription;
+              urlCleanupSubscription = _audioPlayer.onPlayerComplete.listen((_) {
+                html.Url.revokeObjectUrl(url);
+                urlCleanupSubscription?.cancel();
+              });
+            } catch (e) {
+              print('Web audio playback error: $e');
+              // Fallback: BytesSource dene
+              await _audioPlayer.play(BytesSource(audioData));
+            }
           } else {
             // Use BytesSource for mobile/desktop
             await _audioPlayer.play(BytesSource(audioData));
@@ -420,6 +446,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _processMessage(String message) async {
+    // Don't process messages in test mode (test has its own flow)
+    if (_isTestActive) {
+      return;
+    }
 
     try {
       final response = await http.post(
@@ -568,6 +598,14 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         child: Column(
           children: [
+            // Test Mode Selection (always visible when not in active test)
+            if (!_isTestActive)
+              _buildTestModeSelector(),
+            
+            // Test Results (if test completed)
+            if (_testResults != null)
+              _buildTestResults(),
+            
             // Messages list
             Expanded(
               child: ListView.builder(
@@ -583,8 +621,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 },
               ),
             ),
-            // CONVERSATION MODE INDICATOR
-            if (_isInConversation)
+            // CONVERSATION MODE INDICATOR (not in test mode)
+            if (_isInConversation && !_isTestActive)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
@@ -674,7 +712,47 @@ class _ChatScreenState extends State<ChatScreen> {
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: _isInConversation
+                child: _isTestActive
+                    ? // TEST MODE - Show test controls
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _isListening ? null : _startListeningForTest,
+                              icon: Icon(_isListening ? Icons.mic : Icons.mic_none, color: Colors.white),
+                              label: Text(
+                                _isListening ? 'Recording...' : 'Record Answer',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _isListening ? AppTheme.accentRed : AppTheme.primaryPurple,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton.icon(
+                            onPressed: _endTest,
+                            icon: const Icon(Icons.stop, color: Colors.white),
+                            label: const Text('End Test'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.accentRed,
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : _isInConversation
                       ? // IN CONVERSATION MODE - Show End button
                         Row(
                           children: [
@@ -947,5 +1025,581 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
+  }
+
+  // IELTS/TOEFL Speaking Test Functions
+  Widget _buildTestModeSelector() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.primaryPurple.withOpacity(0.2),
+            AppTheme.darkSurface,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.primaryPurple, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryPurple.withOpacity(0.3),
+            blurRadius: 10,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryPurple,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.quiz,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Speaking Test',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Test your speaking skills',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _startTest('IELTS'),
+                  icon: const Icon(Icons.school, size: 24),
+                  label: const Text(
+                    'IELTS Speaking',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryPurple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 4,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _startTest('TOEFL'),
+                  icon: const Icon(Icons.assignment, size: 24),
+                  label: const Text(
+                    'TOEFL Speaking',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTestResults() {
+    if (_testResults == null) return const SizedBox.shrink();
+    
+    final overallScore = _testResults!['overallScore'] ?? 0.0;
+    final criteria = _testResults!['criteria'] as Map<String, dynamic>? ?? {};
+    final feedback = _testResults!['feedback'] ?? '';
+    final strengths = (_testResults!['strengths'] as List?) ?? [];
+    final improvements = (_testResults!['improvements'] as List?) ?? [];
+    
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.darkSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.accentGreen, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Test Results',
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: AppTheme.textSecondary),
+                onPressed: () {
+                  setState(() {
+                    _testResults = null;
+                    _testMode = null;
+                    _isTestActive = false;
+                  });
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Overall Score
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryPurple.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Overall Score: ',
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  overallScore.toStringAsFixed(1),
+                  style: TextStyle(
+                    color: AppTheme.accentGreen,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  _testMode == 'IELTS' ? ' / 9.0' : ' / 30',
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Criteria Scores
+          if (criteria.isNotEmpty) ...[
+            const Text(
+              'Detailed Scores:',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...criteria.entries.map((entry) {
+              final score = entry.value as num;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _formatCriterionName(entry.key),
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      score.toStringAsFixed(1),
+                      style: const TextStyle(
+                        color: AppTheme.accentGreen,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 16),
+          ],
+          // Feedback
+          if (feedback.isNotEmpty) ...[
+            const Text(
+              'Feedback:',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              feedback,
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          // Strengths
+          if (strengths.isNotEmpty) ...[
+            const Text(
+              'Strengths:',
+              style: TextStyle(
+                color: AppTheme.accentGreen,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...strengths.map((strength) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: AppTheme.accentGreen, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      strength.toString(),
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+            const SizedBox(height: 16),
+          ],
+          // Improvements
+          if (improvements.isNotEmpty) ...[
+            const Text(
+              'Areas for Improvement:',
+              style: TextStyle(
+                color: AppTheme.accentRed,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...improvements.map((improvement) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.trending_up, color: AppTheme.accentRed, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      improvement.toString(),
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _formatCriterionName(String key) {
+    final names = {
+      'fluency': 'Fluency & Coherence',
+      'lexicalResource': 'Lexical Resource',
+      'grammar': 'Grammatical Range & Accuracy',
+      'pronunciation': 'Pronunciation',
+      'delivery': 'Delivery',
+      'languageUse': 'Language Use',
+      'topicDevelopment': 'Topic Development',
+    };
+    return names[key] ?? key;
+  }
+
+  Future<void> _startTest(String testType) async {
+    // Clear previous test results
+    setState(() {
+      _testMode = testType;
+      _isTestActive = true;
+      _currentTestPart = testType == 'IELTS' ? 'part1' : 'task1';
+      _currentQuestionIndex = 0;
+      _currentQuestions = [];
+      _currentQuestion = null;
+      _testResults = null;
+      _messages.clear();
+      _testStartTime = DateTime.now();
+      _isInConversation = false; // Exit conversation mode if active
+    });
+    
+    // Stop any ongoing speech/listening
+    await _speech.stop();
+    await _audioPlayer.stop();
+
+    // Request microphone permission
+    var status = await Permission.microphone.request();
+    if (!status.isGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Microphone permission is required for speaking test'),
+          backgroundColor: AppTheme.accentRed,
+        ),
+      );
+      setState(() {
+        _testMode = null;
+        _isTestActive = false;
+      });
+      return;
+    }
+
+    if (!_speechInitialized) {
+      await _initializeSpeech();
+    }
+
+    // Generate questions for the first part
+    await _loadTestQuestions();
+  }
+
+  Future<void> _loadTestQuestions() async {
+    if (_testMode == null || _currentTestPart == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:8082/api/chatbot/speaking-test/generate-questions'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'testType': _testMode,
+          'part': _currentTestPart,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final questions = (data['questions'] as List).map((q) => q.toString()).toList();
+        final instructions = data['instructions'] ?? '';
+        final timeLimit = data['timeLimit'] ?? 60;
+
+        setState(() {
+          _currentQuestions = questions;
+          _currentQuestionIndex = 0;
+          _isLoading = false;
+        });
+
+        // Show instructions
+        if (instructions.isNotEmpty) {
+          _messages.add(ChatMessage(
+            text: instructions,
+            isUser: false,
+            timestamp: DateTime.now(),
+          ));
+        }
+
+        // Show first question
+        if (_currentQuestions.isNotEmpty) {
+          _currentQuestion = _currentQuestions[0];
+          _messages.add(ChatMessage(
+            text: _currentQuestion!,
+            isUser: false,
+            timestamp: DateTime.now(),
+          ));
+          await _speak(_currentQuestion!);
+          
+          // Start listening for answer
+          await _startListeningForTest();
+        }
+      } else {
+        throw Exception('Failed to load questions: ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading questions: $e'),
+          backgroundColor: AppTheme.accentRed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _startListeningForTest() async {
+    if (!_isTestActive || _isLoading) return;
+
+    setState(() {
+      _isListening = true;
+      _recognizedText = '';
+    });
+
+    try {
+      await _speech.listen(
+        onResult: (result) {
+          if (mounted && result.recognizedWords.trim().isNotEmpty) {
+            setState(() {
+              _recognizedText = result.recognizedWords;
+              _messageController.text = result.recognizedWords;
+            });
+          }
+
+          if (result.finalResult && result.recognizedWords.trim().isNotEmpty) {
+            _handleTestResponse(result.recognizedWords.trim());
+          }
+        },
+        listenFor: const Duration(minutes: 2),
+        pauseFor: const Duration(seconds: 3),
+        localeId: 'en-US',
+        listenMode: stt.ListenMode.dictation,
+        cancelOnError: false,
+        partialResults: true,
+      );
+    } catch (e) {
+      print('Error starting speech recognition: $e');
+      setState(() {
+        _isListening = false;
+      });
+    }
+  }
+
+  Future<void> _handleTestResponse(String response) async {
+    await _speech.stop();
+    
+    setState(() {
+      _isListening = false;
+      _recognizedText = '';
+    });
+
+    // Add user response
+    _messages.add(ChatMessage(
+      text: response,
+      isUser: true,
+      timestamp: DateTime.now(),
+    ));
+
+    _scrollToBottom();
+
+    // Evaluate response
+    await _evaluateTestResponse(response);
+  }
+
+  Future<void> _evaluateTestResponse(String response) async {
+    if (_currentQuestion == null || _testMode == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final evalResponse = await http.post(
+        Uri.parse('http://localhost:8082/api/chatbot/speaking-test/evaluate'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'testType': _testMode,
+          'question': _currentQuestion,
+          'response': response,
+        }),
+      );
+
+      if (evalResponse.statusCode == 200) {
+        final data = json.decode(evalResponse.body);
+        
+        setState(() {
+          _testResults = data;
+          _isLoading = false;
+        });
+
+        // Show results message
+        final overallScore = data['overallScore'] ?? 0.0;
+        final scoreText = _testMode == 'IELTS' 
+            ? 'Your score: ${overallScore.toStringAsFixed(1)}/9.0'
+            : 'Your score: ${overallScore.toStringAsFixed(1)}/30';
+        
+        _messages.add(ChatMessage(
+          text: 'Test completed! $scoreText. Check the results above for detailed feedback.',
+          isUser: false,
+          timestamp: DateTime.now(),
+        ));
+
+        _scrollToBottom();
+      } else {
+        throw Exception('Failed to evaluate: ${evalResponse.statusCode}');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error evaluating response: $e'),
+          backgroundColor: AppTheme.accentRed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _endTest() async {
+    await _speech.stop();
+    _testTimer?.cancel();
+    
+    setState(() {
+      _isTestActive = false;
+      _isListening = false;
+      _isSpeaking = false;
+      _recognizedText = '';
+    });
   }
 }

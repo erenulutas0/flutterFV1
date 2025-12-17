@@ -37,9 +37,9 @@ RUN wget -q https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_amd6
 # Copy the built JAR from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Copy entrypoint script
+# Copy entrypoint script and fix line endings (Windows CRLF -> Linux LF)
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 # Expose port
 EXPOSE 8082
@@ -49,5 +49,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8082/api/words || exit 1
 
 # Run the application with Docker profile using entrypoint script
-ENTRYPOINT ["/docker-entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "/docker-entrypoint.sh"]
 

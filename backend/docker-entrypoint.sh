@@ -11,3 +11,4 @@ fi
 # Run the original Java application
 exec java -jar -Dspring.profiles.active=docker app.jar
 
+
