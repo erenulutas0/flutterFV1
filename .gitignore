@@ -1,90 +1,37 @@
-# Dependencies
-node_modules/
-*/node_modules/
-
-# Production builds
-dist/
-build/
-*/dist/
-*/build/
-
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-
-# Maven
-target/
-*.jar
-*.war
-*.ear
-
-# Spring Boot
+# Miscellaneous
 *.class
 *.log
-*.tmp
-*.temp
+*.lock
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+# IntelliJ / Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
 
-# Temporary files
-*.tmp
-*.temp
+# Visual Studio Code
+.vscode/
 
-# Docker
-docker-compose.override.yml
-*.dump
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub/
+build/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+android/local.properties
 
-# Environment variables and secrets
+# Node / NPM
+node_modules/
+npm-debug.log
+
+# Environment Variables
 .env
-.env.local
-.env.*.local
-*.env
-secrets/
-*.secret
-
-# Application specific
-application-local.properties
-application-secret.properties
-
-# Database backups
-backup_*.sql
-backup_*.dump
-
-# Build logs
-build_log.txt
