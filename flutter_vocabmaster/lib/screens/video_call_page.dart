@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -29,6 +30,7 @@ class VideoCallPage extends StatefulWidget {
 class _VideoCallPageState extends State<VideoCallPage> {
   bool _isVideoEnabled = true;
   bool _isAudioEnabled = true;
+  bool _isSpeakerOn = true; // Varsayılan açık
   bool _isRemoteVideoReady = false;
   String _connectionState = 'Başlatılıyor...';
   
@@ -63,6 +65,8 @@ class _VideoCallPageState extends State<VideoCallPage> {
     });
   }
 
+  Timer? _statsTimer;
+
   @override
   void initState() {
     super.initState();
@@ -71,6 +75,41 @@ class _VideoCallPageState extends State<VideoCallPage> {
     }
     _log("Initilizing... Role: ${widget.role}");
     _initializeWebRTC();
+    
+    // Ses istatistiklerini izle
+    _statsTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+       if (_peerConnection != null) {
+          try {
+             List<StatsReport> stats = await _peerConnection!.getStats();
+             for (var report in stats) {
+                if (report.type == 'media-source' && report.values['kind'] == 'audio') {
+                   // Mikrofon giriş seviyesi
+                   var inputLevel = report.values['audioLevel'];
+                   // _log("Mic Level: $inputLevel"); // Çok spam yapabilir, gerekirse aç
+                }
+                if (report.type == 'outbound-rtp' && report.values['mediaType'] == 'audio') {
+                   var bytesSent = report.values['bytesSent'];
+                   _log("Audio Sent: $bytesSent");
+                }
+                if (report.type == 'inbound-rtp') {
+                   var kind = report.values['kind'] ?? report.values['mediaType'] ?? 'unknown';
+                   var bytesReceived = report.values['bytesReceived'];
+                   _log("Recv ($kind): $bytesReceived");
+                }
+             }
+             if (_localStream != null && _localStream!.getAudioTracks().isNotEmpty) {
+                var audioTrack = _localStream!.getAudioTracks()[0];
+                bool enabled = audioTrack.enabled;
+                if (!enabled && _isAudioEnabled) {
+                    _log("WARNING: Local Audio Track was DISABLED! Re-enabling...");
+                    audioTrack.enabled = true; // ZORLA AÇ
+                }
+             }
+          } catch (e) {
+             // ignore
+          }
+       }
+    });
   }
 
   Future<void> _requestPermissions() async {
@@ -117,19 +156,43 @@ class _VideoCallPageState extends State<VideoCallPage> {
       _log("Creating PeerConnection...");
       _peerConnection = await createPeerConnection(configuration, offerOptions);
 
+      // SDP Unified Plan: addTransceiver kaldırıldı, addTrack yeterli.
+      
       final Map<String, dynamic> constraints = {
-        'audio': true,
+        'audio': {
+          'echoCancellation': false,
+          'autoGainControl': false,
+          'noiseSuppression': false,
+          'googEchoCancellation': false,
+          'googAutoGainControl': false,
+          'googNoiseSuppression': false,
+          'googHighpassFilter': false,
+        },
         'video': {
           'facingMode': 'user',
-          'width': {'ideal': 640},
-          'height': {'ideal': 480},
-          'frameRate': {'ideal': 24},
+          'width': {'ideal': 320},
+          'height': {'ideal': 240},
+          'frameRate': {'ideal': 15},
         },
       };
 
       try {
         _log("Getting User Media...");
         _localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        var audioTracks = _localStream!.getAudioTracks();
+        _log("Local Stream Got. Audio Tracks: ${audioTracks.length}");
+        if (audioTracks.isNotEmpty) {
+           audioTracks[0].enabled = true; // Force enable
+           _log("Audio Track 0 Enabled: ${audioTracks[0].enabled}");
+        } else {
+           _log("WARNING: NO AUDIO TRACK FOUND!");
+        }
+
+        // SES ÇIKIŞINI HOPARLÖRE ZORLA
+        Helper.setSpeakerphoneOn(true);
+        _log("Speakerphone enabled");
+
         _localStream!.getTracks().forEach((track) {
           _peerConnection!.addTrack(track, _localStream!);
         });
@@ -141,6 +204,13 @@ class _VideoCallPageState extends State<VideoCallPage> {
       _peerConnection!.onTrack = (event) {
         if (event.streams.isEmpty) return;
         _log("WebRTC: onTrack stream id: ${event.streams[0].id}");
+        // Uzak ses track kontrolü
+        var audioTracks = event.streams[0].getAudioTracks();
+        if (audioTracks.isNotEmpty) {
+             _log("Remote Audio Track Found: ${audioTracks[0].id}, Enabled: ${audioTracks[0].enabled}");
+             audioTracks[0].enabled = true; // Zorla aç
+        }
+
         if (mounted) {
            setState(() {
              _remoteStream = event.streams[0];
@@ -177,7 +247,24 @@ class _VideoCallPageState extends State<VideoCallPage> {
         _log("WebRTC State: $state");
         if (mounted) {
            setState(() {
-              if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected) _connectionState = 'Bağlandı';
+              if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+                  _connectionState = 'Bağlandı';
+                  // Ses çıkışlarını tara ve Hoparlörü zorla seç
+                  Helper.audiooutputs.then((devices) {
+                      _log("Audio Outputs: ${devices.map((d) => "${d.label} (${d.deviceId})").join(", ")}");
+                      try {
+                          var speaker = devices.firstWhere(
+                             (d) => d.label.toLowerCase().contains('speaker') || d.deviceId == 'speaker', 
+                             orElse: () => devices.first
+                          );
+                          Helper.selectAudioOutput(speaker.deviceId);
+                          _log("Selected Audio Output: ${speaker.label}");
+                      } catch (e) {
+                          _log("Error selecting speaker: $e");
+                      }
+                  });
+                  Future.delayed(const Duration(milliseconds: 500), () => Helper.setSpeakerphoneOn(true));
+              }
               else if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed) _connectionState = 'Bağlantı Hatası';
               else if (state == RTCPeerConnectionState.RTCPeerConnectionStateClosed) _connectionState = 'Sonlandı';
               else _connectionState = 'Durum: ${state.toString().split('.').last}';
@@ -206,6 +293,14 @@ class _VideoCallPageState extends State<VideoCallPage> {
       } else {
         _log("I am Callee. Waiting for offer...");
         _connectionState = "Teklif Bekleniyor...";
+      }
+
+      // Hoparlörü otomatik aç
+      try {
+        Helper.setSpeakerphoneOn(true);
+        _log("Speakerphone enabled");
+      } catch (e) {
+        _log("Speakerphone error: $e");
       }
 
     } catch (e) {
@@ -355,6 +450,13 @@ class _VideoCallPageState extends State<VideoCallPage> {
     });
   }
 
+  void _toggleSpeaker() {
+    setState(() {
+      _isSpeakerOn = !_isSpeakerOn;
+      Helper.setSpeakerphoneOn(_isSpeakerOn);
+    });
+  }
+
   void _endCall({bool remote = false}) {
      if (!remote) {
         widget.socket.emit('end_call', {'roomId': widget.roomId});
@@ -377,6 +479,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
 
   @override
   void dispose() {
+    _statsTimer?.cancel();
     if (!kIsWeb) WakelockPlus.disable();
     _localStream?.dispose();
     _peerConnection?.close();
@@ -502,6 +605,13 @@ class _VideoCallPageState extends State<VideoCallPage> {
                    backgroundColor: _isVideoEnabled ? Colors.white : Colors.red,
                    onPressed: _toggleCam,
                    child: Icon(_isVideoEnabled ? Icons.videocam : Icons.videocam_off, color: Colors.black),
+                 ),
+                 FloatingActionButton(
+                   heroTag: 'speaker',
+                   mini: true,
+                   backgroundColor: _isSpeakerOn ? Colors.white : Colors.grey,
+                   onPressed: _toggleSpeaker,
+                   child: Icon(_isSpeakerOn ? Icons.volume_up : Icons.phone_in_talk, color: Colors.black),
                  ),
                ],
              ),
