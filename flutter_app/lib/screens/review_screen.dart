@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/word.dart';
 import '../services/srs_service.dart';
+import '../services/unsplash_service.dart';
 
 class ReviewScreen extends StatefulWidget {
   const ReviewScreen({Key? key}) : super(key: key);
@@ -15,6 +16,26 @@ class _ReviewScreenState extends State<ReviewScreen> {
   bool isLoading = true;
   bool showAnswer = false;
   bool isSubmitting = false;
+  String? currentImageUrl;
+
+  Future<void> _loadCurrentWordImage() async {
+    if (reviewWords.isEmpty || currentIndex >= reviewWords.length) return;
+
+    // Loading durumu için resmi sıfırla
+    setState(() {
+      currentImageUrl = null;
+    });
+
+    final word = reviewWords[currentIndex];
+    // İngilizce kelimeyi sorgu olarak kullan
+    final url = await UnsplashService.getImageUrl(word.englishWord);
+
+    if (mounted && url != null) {
+      setState(() {
+        currentImageUrl = url;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -31,6 +52,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
       reviewWords = words;
       isLoading = false;
     });
+    
+    // İlk kelime için resim yükle
+    _loadCurrentWordImage();
   }
 
   void _flipCard() {
@@ -53,6 +77,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
       
       if (currentIndex < reviewWords.length - 1) {
         currentIndex++;
+        // Yeni kelime için resim yükle
+        _loadCurrentWordImage();
       } else {
         // Review tamamlandı
         _showCompletionDialog();
@@ -166,66 +192,198 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ),
       body: Column(
         children: [
-          Expanded(
-            child: Center(
-              child: GestureDetector(
-                onTap: _flipCard,
-                child: Card(
-                  margin: const EdgeInsets.all(24),
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+          _buildFlashcard(),
+          if (showAnswer) _buildQualityButtons(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFlashcard() {
+    final currentWord = reviewWords[currentIndex];
+
+    // Try to get an example sentence
+    String? exampleSentence;
+    if (currentWord.sentences.isNotEmpty) {
+      exampleSentence = currentWord.sentences.first.sentence;
+    }
+
+    return Expanded(
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          elevation: 0,
+          borderRadius: BorderRadius.circular(24),
+          clipBehavior: Clip.antiAlias,
+          child: Container(
+             decoration: BoxDecoration(
+                color: const Color(0xFF1E1E2C),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white12, width: 1.5),
+             ),
+             child: Stack(
+              children: [
+                // Arkaplan Resmi (Varsa)
+                if (currentImageUrl != null)
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.15,
+                      child: Image.network(
+                        currentImageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const SizedBox(),
+                      ),
+                    ),
                   ),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          showAnswer ? Icons.translate : Icons.abc,
-                          size: 48,
-                          color: Colors.blue,
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          showAnswer
-                              ? currentWord.turkishMeaning
-                              : currentWord.englishWord,
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          showAnswer ? 'Türkçe Anlamı' : 'İngilizce Kelime',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        if (!showAnswer) ...[
-                          const SizedBox(height: 32),
-                          const Text(
-                            'Kartı çevirmek için dokunun',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                      ],
+                
+                // Audio Button (Top Right)
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: IconButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Seslendirme yakında...'), duration: Duration(seconds: 1)),
+                      );
+                    },
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.volume_up_rounded, color: Colors.white70),
                     ),
                   ),
                 ),
-              ),
+
+                // İçerik
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Part of Speech Placeholder
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.blueAccent.withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          'Vocabulary',
+                          style: TextStyle(
+                            color: Colors.blueAccent[100],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      
+                      // Main Word
+                      Text(
+                        showAnswer
+                            ? currentWord.turkishMeaning
+                            : currentWord.englishWord,
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w800,
+                          color: showAnswer ? const Color(0xFF4CAF50) : Colors.white,
+                          shadows: [
+                             Shadow(
+                               color: Colors.black.withOpacity(0.3),
+                               offset: const Offset(0, 2),
+                               blurRadius: 4,
+                             )
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Label
+                      Text(
+                        showAnswer ? 'Türkçe Anlamı' : 'İngilizce Kelime',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[400],
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+
+                      // Example Sentence
+                      if (!showAnswer && exampleSentence != null) ...[
+                        const SizedBox(height: 32),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '"$exampleSentence"',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.white70,
+                              height: 1.4,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+
+                      const Spacer(),
+
+                      if (!showAnswer)
+                        const Text(
+                          'Cevabı görmek için dokunun',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white30,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                
+                // Tap Handler
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          showAnswer = !showAnswer;
+                        });
+                      },
+                      splashColor: Colors.white.withOpacity(0.05),
+                      highlightColor: Colors.white.withOpacity(0.02),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          if (showAnswer) _buildQualityButtons(),
-        ],
+        ),
       ),
     );
   }
@@ -234,10 +392,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: Colors.grey[900], // Dark background
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.3),
             blurRadius: 4,
             offset: const Offset(0, -2),
           ),
@@ -251,6 +409,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
+              color: Colors.white70, // White text
             ),
           ),
           const SizedBox(height: 12),

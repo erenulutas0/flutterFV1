@@ -242,4 +242,55 @@ class OfflineStorageService {
       return null;
     }
   }
+  // ==================== READING PASSAGE CACHE ====================
+  static const String _readingPassageKey = 'reading_passage_cache';
+
+  /// Okuma metnini ve durumunu cache'e kaydet
+  static Future<void> saveReadingPassage({
+    required Map<String, dynamic> content,
+    required String level,
+    required Map<int, String?> userAnswers,
+    required bool showResults,
+    required int score,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Convert int keys to string for JSON
+    final answersJson = userAnswers.map((key, value) => MapEntry(key.toString(), value));
+
+    final data = {
+      'content': content,
+      'level': level,
+      'userAnswers': answersJson,
+      'showResults': showResults,
+      'score': score,
+      'savedAt': DateTime.now().toIso8601String(),
+    };
+    
+    await prefs.setString(_readingPassageKey, jsonEncode(data));
+    print('💾 Reading passage cached');
+  }
+
+  /// Cache'deki okuma metnini getir
+  static Future<Map<String, dynamic>?> getReadingPassage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_readingPassageKey);
+    
+    if (jsonString == null || jsonString.isEmpty) {
+      return null;
+    }
+    
+    try {
+      return Map<String, dynamic>.from(jsonDecode(jsonString));
+    } catch (e) {
+      print('❌ Error decoding cached reading passage: $e');
+      return null;
+    }
+  }
+
+  /// Cache'deki okuma metnini temizle (yeni oluşturulunca otomatik ezilir ama manuel silme gerekirse)
+  static Future<void> clearReadingPassage() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_readingPassageKey);
+  }
 }

@@ -8,6 +8,7 @@ import '../models/word.dart';
 import '../theme/app_theme.dart';
 import '../utils/backend_config.dart';
 import '../services/sync_service.dart';
+import '../services/groq_service.dart';
 
 class PracticeScreen extends StatefulWidget {
   const PracticeScreen({super.key});
@@ -107,29 +108,19 @@ class _PracticeScreenState extends State<PracticeScreen> {
     });
 
     try {
-      final response = await http.post(
-        Uri.parse('${BackendConfig.apiBaseUrl}/chatbot/generate-sentences'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'word': wordToUse,
-          'levels': _selectedLevels.toList(),
-          'lengths': _selectedLengths.toList(),
-        }),
+      /*
+      // Eski Backend İsteği Yerine GroqService Kullanımı
+      final response = await http.post...
+      */
+      
+      final result = await GroqService.generateSentences(
+        word: wordToUse,
+        levels: _selectedLevels.toList(),
+        lengths: _selectedLengths.toList(),
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final sentences = (data['sentences'] as List)
-            .map((s) => s.toString())
-            .toList();
-        
-        // Get translations from backend (if available)
-        List<String> translations = [];
-        if (data['translations'] != null) {
-          translations = (data['translations'] as List)
-              .map((t) => t.toString())
-              .toList();
-        }
+      final sentences = result['sentences']!;
+      final translations = result['translations']!;
         
         setState(() {
           // Dispose old controllers
@@ -166,9 +157,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
             },
           );
         });
-      } else {
-        throw Exception('Failed to generate sentences');
-      }
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -302,38 +291,19 @@ class _PracticeScreenState extends State<PracticeScreen> {
       final result = _translationResults[index];
       final isReverse = result.isReverse;
       
-      final Map<String, dynamic> requestBody = {
-        'userTranslation': userTranslation,
-        'direction': isReverse ? 'TR_TO_EN' : 'EN_TO_TR',
-      };
-      
-      if (isReverse) {
-        // TR -> EN
-        // Question was Turkish (from _aiTranslations), Answer is English
-        requestBody['turkishSentence'] = _aiTranslations[index];
-        requestBody['englishSentence'] = _generatedSentences[index]; // Reference
-      } else {
-        // EN -> TR
-        // Question was English, Answer is Turkish
-        requestBody['englishSentence'] = _generatedSentences[index];
-      }
-
-      final response = await http.post(
-        Uri.parse('${BackendConfig.apiBaseUrl}/chatbot/check-translation'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(requestBody),
+      final resultData = await GroqService.checkTranslation(
+        originalSentence: isReverse ? _aiTranslations[index] : _generatedSentences[index],
+        userTranslation: userTranslation,
+        direction: isReverse ? 'TR_TO_EN' : 'EN_TO_TR',
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (mounted) {
         setState(() {
-          _translationResults[index].isCorrect = data['isCorrect'] as bool;
-          _translationResults[index].feedback = data['feedback'] ?? '';
-          _translationResults[index].correctTranslation = data['correctTranslation'] ?? '';
+          _translationResults[index].isCorrect = resultData['isCorrect'] as bool;
+          _translationResults[index].feedback = resultData['feedback'] ?? '';
+          _translationResults[index].correctTranslation = resultData['correctTranslation'] ?? '';
           _translationResults[index].isChecking = false;
         });
-      } else {
-        throw Exception('Failed to check translation');
       }
     } catch (e) {
       if (mounted) {

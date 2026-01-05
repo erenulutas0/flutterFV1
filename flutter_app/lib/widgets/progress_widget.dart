@@ -49,7 +49,7 @@ class ProgressWidget extends StatelessWidget {
                         children: [
                           const Text(
                             '⭐',
-                            style: TextStyle(fontSize: 16),
+                            style: TextStyle(fontSize: 24),
                           ),
                           const SizedBox(width: 6),
                           Text(
@@ -134,7 +134,7 @@ class ProgressWidget extends StatelessWidget {
       children: [
         Text(
           icon,
-          style: const TextStyle(fontSize: 24),
+          style: const TextStyle(fontSize: 32),
         ),
         const SizedBox(height: 4),
         Text(

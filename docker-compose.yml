@@ -76,6 +76,9 @@ services:
       LANGCHAIN4J_OLLAMA_CHAT_MODEL_TEMPERATURE: 0.2
       LANGCHAIN4J_OLLAMA_CHAT_MODEL_TIMEOUT: 300s
       LANGCHAIN4J_OLLAMA_CHAT_MODEL_TOP_P: 0.9
+
+      # Groq AI
+      GROQ_API_KEY: ${GROQ_API_KEY}
       
       # Piper TTS (external service - must be available on host)
       # Note: Piper TTS requires Windows/Linux executable, not included in Docker

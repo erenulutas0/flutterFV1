@@ -1,0 +1,127 @@
+Analyzing flutter_vocabmaster...                                
+
+warning - Unused import: 'screens/repeat_page.dart' - lib\main.dart:4:8 - unused_import
+warning - Unused import: 'screens/speaking_page.dart' - lib\main.dart:11:8 - unused_import
+warning - Duplicate import - lib\main.dart:17:8 - duplicate_import
+   info - Convert 'key' to a super parameter - lib\main.dart:36:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\main.dart:84:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\screens\chat_detail_page.dart:9:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\screens\chat_list_page.dart:6:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\screens\dictionary_page.dart:7:9 - use_super_parameters
+warning - Unused import: '../models/word.dart' - lib\screens\home_page.dart:4:8 - unused_import
+   info - Convert 'key' to a super parameter - lib\screens\home_page.dart:13:9 - use_super_parameters
+   info - Don't invoke 'print' in production code - lib\screens\home_page.dart:145:7 - avoid_print
+   info - Use 'const' with the constructor to improve performance - lib\screens\home_page.dart:572:11 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\screens\home_page.dart:573:23 - prefer_const_literals_to_create_immutables
+   info - Unnecessary use of 'toList' in a spread - lib\screens\home_page.dart:1018:14 - unnecessary_to_list_in_spreads
+   info - Convert 'key' to a super parameter - lib\screens\menu_page.dart:6:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\screens\onboarding_screen.dart:7:9 - use_super_parameters
+warning - The value of the field '_hintAnimation' isn't used - lib\screens\onboarding_screen.dart:25:26 - unused_field
+   info - Use 'const' with the constructor to improve performance - lib\screens\onboarding_screen.dart:350:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\onboarding_screen.dart:350:46 - prefer_const_constructors
+   info - Convert 'key' to a super parameter - lib\screens\onboarding_screen.dart:415:9 - use_super_parameters
+   info - Invalid use of a private type in a public API - lib\screens\onboarding_screen.dart:418:3 - library_private_types_in_public_api
+   info - Convert 'key' to a super parameter - lib\screens\onboarding_screen.dart:494:9 - use_super_parameters
+   info - Invalid use of a private type in a public API - lib\screens\onboarding_screen.dart:497:3 - library_private_types_in_public_api
+   info - Convert 'key' to a super parameter - lib\screens\onboarding_screen.dart:593:9 - use_super_parameters
+   info - Invalid use of a private type in a public API - lib\screens\onboarding_screen.dart:602:3 - library_private_types_in_public_api
+   info - Convert 'key' to a super parameter - lib\screens\practice_page.dart:11:9 - use_super_parameters
+   info - Don't invoke 'print' in production code - lib\screens\practice_page.dart:79:7 - avoid_print
+   info - Use 'const' with the constructor to improve performance - lib\screens\practice_page.dart:512:16 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\screens\practice_page.dart:513:28 - prefer_const_literals_to_create_immutables
+   info - Convert 'key' to a super parameter - lib\screens\profile_page.dart:7:9 - use_super_parameters
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:161:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:163:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:311:15 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\screens\profile_page.dart:313:27 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:318:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:320:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:582:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:583:33 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\screens\profile_page.dart:584:38 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:585:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:585:79 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:586:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:587:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:588:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:590:41 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:633:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:634:33 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\screens\profile_page.dart:635:38 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:636:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:636:62 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:637:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:638:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:639:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\profile_page.dart:641:41 - prefer_const_constructors
+   info - Convert 'key' to a super parameter - lib\screens\quick_dictionary_page.dart:6:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\screens\repeat_page.dart:7:9 - use_super_parameters
+   info - Don't use 'BuildContext's across async gaps - lib\screens\repeat_page.dart:38:28 - use_build_context_synchronously
+   info - Use 'const' with the constructor to improve performance - lib\screens\repeat_page.dart:71:14 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\repeat_page.dart:72:15 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\screens\repeat_page.dart:73:21 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\screens\repeat_page.dart:398:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\repeat_page.dart:419:27 - prefer_const_constructors
+   info - Convert 'key' to a super parameter - lib\screens\review_page.dart:7:9 - use_super_parameters
+warning - The value of the field '_flashcards' isn't used - lib\screens\review_page.dart:17:35 - unused_field
+warning - The value of the local variable 'sectionGap' isn't used - lib\screens\review_page.dart:40:22 - unused_local_variable
+   info - Use 'const' with the constructor to improve performance - lib\screens\review_page.dart:200:51 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\review_page.dart:202:60 - prefer_const_constructors
+   info - Convert 'key' to a super parameter - lib\screens\sentences_page.dart:8:9 - use_super_parameters
+  error - Expected to find ')' - lib\screens\sentences_page.dart:477:10 - expected_token
+   info - Convert 'key' to a super parameter - lib\screens\sentences_page.dart:488:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\screens\speaking_page.dart:6:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\screens\stats_page.dart:7:9 - use_super_parameters
+   info - Use 'const' with the constructor to improve performance - lib\screens\stats_page.dart:254:7 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\stats_page.dart:255:7 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\stats_page.dart:256:7 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\stats_page.dart:257:7 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\stats_page.dart:258:7 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\stats_page.dart:259:7 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\stats_page.dart:260:7 - prefer_const_constructors
+   info - Unnecessary use of 'toList' in a spread - lib\screens\stats_page.dart:438:14 - unnecessary_to_list_in_spreads
+   info - Convert 'key' to a super parameter - lib\screens\words_page.dart:11:9 - use_super_parameters
+   info - Don't invoke 'print' in production code - lib\screens\words_page.dart:41:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\screens\words_page.dart:54:7 - avoid_print
+   info - Use 'const' for final variables initialized to a constant value - lib\screens\words_page.dart:258:5 - prefer_const_declarations
+warning - The value of the local variable 'totalCells' isn't used - lib\screens\words_page.dart:258:11 - unused_local_variable
+  error - Expected to find ')' - lib\screens\words_page.dart:650:10 - expected_token
+   info - Statements in an if should be enclosed in a block - lib\screens\words_page.dart:835:56 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\screens\words_page.dart:836:46 - curly_braces_in_flow_control_structures
+  error - Expected to find ';' - lib\screens\words_page.dart:867:17 - expected_token
+  error - Expected an identifier - lib\screens\words_page.dart:867:18 - missing_identifier
+  error - Unexpected text ';' - lib\screens\words_page.dart:867:18 - unexpected_token
+  error - Expected to find '}' - lib\screens\words_page.dart:868:15 - expected_token
+  error - Expected a class member - lib\screens\words_page.dart:873:6 - expected_class_member
+  error - Expected a method, getter, setter or operator declaration - lib\screens\words_page.dart:874:8 - expected_executable
+   info - An uninitialized variable should have an explicit type annotation - lib\screens\words_page.dart:875:7 - prefer_typing_uninitialized_variables
+  error - Expected to find ';' - lib\screens\words_page.dart:875:7 - expected_token
+  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name - lib\screens\words_page.dart:875:7 - missing_const_final_var_or_type
+  error - Expected a method, getter, setter or operator declaration - lib\screens\words_page.dart:875:24 - expected_executable
+  error - Expected a method, getter, setter or operator declaration - lib\screens\words_page.dart:875:26 - expected_executable
+   info - An uninitialized variable should have an explicit type annotation - lib\screens\words_page.dart:875:27 - prefer_typing_uninitialized_variables
+  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name - lib\screens\words_page.dart:875:27 - missing_const_final_var_or_type
+   info - An uninitialized variable should have an explicit type annotation - lib\screens\words_page.dart:875:36 - prefer_typing_uninitialized_variables
+   info - An uninitialized variable should have an explicit type annotation - lib\screens\words_page.dart:875:43 - prefer_typing_uninitialized_variables
+   info - An uninitialized variable should have an explicit type annotation - lib\screens\words_page.dart:875:50 - prefer_typing_uninitialized_variables
+  error - Expected to find ';' - lib\screens\words_page.dart:875:50 - expected_token
+  error - Expected a method, getter, setter or operator declaration - lib\screens\words_page.dart:875:55 - expected_executable
+  error - Expected a method, getter, setter or operator declaration - lib\screens\words_page.dart:875:57 - expected_executable
+  error - Expected a method, getter, setter or operator declaration - lib\screens\words_page.dart:883:8 - expected_executable
+  error - Expected a method, getter, setter or operator declaration - lib\screens\words_page.dart:884:5 - expected_executable
+  error - Unexpected text ';' - lib\screens\words_page.dart:884:6 - unexpected_token
+  error - Expected a method, getter, setter or operator declaration - lib\screens\words_page.dart:885:3 - expected_executable
+  error - Expected a method, getter, setter or operator declaration - lib\screens\words_page.dart:1075:1 - expected_executable
+   info - Don't invoke 'print' in production code - lib\services\api_service.dart:21:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\api_service.dart:50:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\api_service.dart:66:7 - avoid_print
+   info - Convert 'key' to a super parameter - lib\widgets\animated_background.dart:8:9 - use_super_parameters
+warning - The value of the local variable 'index' isn't used - lib\widgets\animated_background.dart:99:23 - unused_local_variable
+warning - The value of the local variable 'index' isn't used - lib\widgets\animated_background.dart:157:23 - unused_local_variable
+   info - Convert 'key' to a super parameter - lib\widgets\bottom_nav.dart:8:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\widgets\global_matching_indicator.dart:5:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\widgets\matching_animation.dart:5:9 - use_super_parameters
+   info - The imported package 'flutter_vocabmaster' isn't a dependency of the importing package - test\widget_test.dart:11:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:flutter_vocabmaster/main.dart' - test\widget_test.dart:11:8 - uri_does_not_exist
+  error - The name 'MyApp' isn't a class - test\widget_test.dart:16:35 - creation_with_non_type
+

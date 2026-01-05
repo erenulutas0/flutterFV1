@@ -1,0 +1,39 @@
+Analyzing lib...                                                
+
+warning - Unused import: 'screens/repeat_page.dart' - lib\main.dart:4:8 - unused_import
+   info - Convert 'key' to a super parameter - lib\main.dart:25:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\main.dart:44:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\screens\dictionary_page.dart:7:9 - use_super_parameters
+warning - Unused import: '../models/word.dart' - lib\screens\home_page.dart:4:8 - unused_import
+   info - Convert 'key' to a super parameter - lib\screens\home_page.dart:9:9 - use_super_parameters
+   info - Don't invoke 'print' in production code - lib\screens\home_page.dart:141:7 - avoid_print
+   info - Use 'const' with the constructor to improve performance - lib\screens\home_page.dart:533:11 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\screens\home_page.dart:534:23 - prefer_const_literals_to_create_immutables
+   info - Unnecessary use of 'toList' in a spread - lib\screens\home_page.dart:895:14 - unnecessary_to_list_in_spreads
+   info - Convert 'key' to a super parameter - lib\screens\menu_page.dart:5:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\screens\practice_page.dart:5:9 - use_super_parameters
+   info - Convert 'key' to a super parameter - lib\screens\repeat_page.dart:7:9 - use_super_parameters
+   info - Don't use 'BuildContext's across async gaps - lib\screens\repeat_page.dart:38:28 - use_build_context_synchronously
+   info - Use 'const' with the constructor to improve performance - lib\screens\repeat_page.dart:71:14 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\repeat_page.dart:72:15 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\screens\repeat_page.dart:73:21 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\screens\repeat_page.dart:398:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\repeat_page.dart:419:27 - prefer_const_constructors
+   info - Convert 'key' to a super parameter - lib\screens\sentences_page.dart:7:9 - use_super_parameters
+   info - Use 'const' with the constructor to improve performance - lib\screens\sentences_page.dart:301:21 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\screens\sentences_page.dart:303:26 - prefer_const_literals_to_create_immutables
+   info - Convert 'key' to a super parameter - lib\screens\stats_page.dart:6:9 - use_super_parameters
+   info - Unnecessary use of 'toList' in a spread - lib\screens\stats_page.dart:346:14 - unnecessary_to_list_in_spreads
+   info - Convert 'key' to a super parameter - lib\screens\words_page.dart:7:9 - use_super_parameters
+  error - The argument type 'String' can't be assigned to the parameter type 'DateTime'.  - lib\screens\words_page.dart:31:54 - argument_type_not_assignable
+warning - The value of the local variable 'newDate' isn't used - lib\screens\words_page.dart:46:11 - unused_local_variable
+   info - Use 'const' for final variables initialized to a constant value - lib\screens\words_page.dart:212:5 - prefer_const_declarations
+warning - The value of the local variable 'totalCells' isn't used - lib\screens\words_page.dart:212:11 - unused_local_variable
+   info - Don't invoke 'print' in production code - lib\services\api_service.dart:20:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\api_service.dart:47:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\api_service.dart:62:7 - avoid_print
+   info - Convert 'key' to a super parameter - lib\widgets\animated_background.dart:8:9 - use_super_parameters
+warning - The value of the local variable 'index' isn't used - lib\widgets\animated_background.dart:99:23 - unused_local_variable
+warning - The value of the local variable 'index' isn't used - lib\widgets\animated_background.dart:157:23 - unused_local_variable
+   info - Convert 'key' to a super parameter - lib\widgets\bottom_nav.dart:7:9 - use_super_parameters
+

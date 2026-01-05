@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'words_screen.dart';
 import 'sentences_screen.dart';
 import 'practice_screen.dart';
+import 'reading_screen.dart';
 import 'chat_screen.dart';
 import 'matchmaking_screen.dart';
 import 'review_screen.dart';
@@ -14,6 +15,7 @@ import '../widgets/progress_widget.dart';
 import '../screens/achievements_screen.dart';
 import '../screens/stats_screen.dart';
 import '../models/word.dart';
+import 'dictionary_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,13 +32,17 @@ class _HomeScreenState extends State<HomeScreen> {
     const WordsScreen(),
     const SentencesScreen(),
     const PracticeScreen(),
+    const ReadingScreen(),
     const ChatScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
@@ -66,6 +72,11 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Pratik',
           ),
           NavigationDestination(
+            icon: Icon(Icons.menu_book),
+            selectedIcon: Icon(Icons.menu_book),
+            label: 'Okuma',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.chat_bubble_outline),
             selectedIcon: Icon(Icons.chat_bubble),
             label: 'Konuş',
@@ -75,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -345,6 +357,28 @@ class _HomePageState extends State<HomePage> {
                         height: 1.2,
                       ),
                     ),
+                    
+                    const Spacer(), // Başlık ile ikon arasını aç
+                    // Dictionary / Search Icon
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.search, color: Colors.white),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DictionaryScreen(),
+                            ),
+                          );
+                        },
+                        tooltip: 'Hızlı Sözlük (Groq)',
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 32),
@@ -523,27 +557,50 @@ class _HomePageState extends State<HomePage> {
                 // Action Buttons - Hierarchical Layout
                 Column(
                   children: [
-                    // Main Button - Full Width
-                    SizedBox(
+                    // Main Button - Gradinet CTA
+                    Container(
                       width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const WordsScreen()),
-                          );
-                        },
-                        icon: const Icon(Icons.book),
-                        label: const Text(
-                          'Öğrenmeye Başla',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF512F), Color(0xFFDD2476)], // Orange-Red
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryPurple,
-                          foregroundColor: AppTheme.textPrimary,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF512F).withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const WordsScreen()),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.auto_stories, color: Colors.white), // Changed icon
+                              SizedBox(width: 8),
+                              Text(
+                                'Öğrenmeye Başla',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -657,22 +714,25 @@ class _HomePageState extends State<HomePage> {
                   crossAxisCount: 3,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: 1.1,
+                  childAspectRatio: 1.0, // More square
                   children: [
                     _buildStatCard(
                       _isLoading ? '...' : '$_totalWordsCount',
                       'Toplam\nKelime',
                       AppTheme.accentBlue,
+                      Icons.emoji_events_outlined,
                     ),
                     _buildStatCard(
                       _isLoading ? '...' : '$_streakDays',
                       'Seri\nGün',
                       AppTheme.accentGreen,
+                      Icons.local_fire_department_outlined,
                     ),
                     _buildStatCard(
                       _isLoading ? '...' : '$_xp',
                       'XP',
                       AppTheme.primaryPurple,
+                      Icons.star_outline,
                     ),
                   ],
                 ),
@@ -792,46 +852,36 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildStatCard(String value, String label, Color color) {
-    return Card(
-      color: AppTheme.darkSurface,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [color, color.withOpacity(0.7)],
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                value,
-                style: const TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+  Widget _buildStatCard(String value, String label, Color color, IconData icon) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.darkSurfaceVariant,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
             ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppTheme.textTertiary,
-                fontSize: 11,
-                height: 1.3,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 11,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
