@@ -2,7 +2,14 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 class MatchingAnimation extends StatefulWidget {
-  const MatchingAnimation({Key? key}) : super(key: key);
+  final int waitingTimeSeconds;
+  final VoidCallback? onCancel;
+  
+  const MatchingAnimation({
+    Key? key,
+    this.waitingTimeSeconds = 0,
+    this.onCancel,
+  }) : super(key: key);
 
   @override
   State<MatchingAnimation> createState() => _MatchingAnimationState();
@@ -128,44 +135,80 @@ class _MatchingAnimationState extends State<MatchingAnimation> with TickerProvid
             // "Eşleşiyor..." Button/Text (Bottom Center)
             Positioned(
               bottom: 30,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0ea5e9).withOpacity(0.2), // Glassy Blue
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFF0ea5e9).withOpacity(0.5),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Bekleme süresi göstergesi
+                  if (widget.waitingTimeSeconds > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '${widget.waitingTimeSeconds} saniye',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.6),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  
+                  // Eşleşiyor durumu
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0ea5e9).withOpacity(0.2), // Glassy Blue
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF0ea5e9).withOpacity(0.5),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0ea5e9).withOpacity(0.2),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF06b6d4)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Eşleşiyor...',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0ea5e9).withOpacity(0.2),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF06b6d4)),
+                  
+                  // İptal butonu
+                  if (widget.onCancel != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: GestureDetector(
+                        onTap: widget.onCancel,
+                        child: Text(
+                          'İptal',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 12,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Eşleşiyor...',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
           ],

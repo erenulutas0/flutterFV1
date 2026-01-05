@@ -139,6 +139,36 @@ public class MatchmakingController {
             }
         });
 
+        // Heartbeat event listener (kullanıcı hala aktif mi kontrol)
+        socketIOServer.addEventListener("heartbeat", Map.class, (client, data, ackRequest) -> {
+            String userId = client.get("userId");
+            if (userId != null) {
+                matchmakingService.updateHeartbeat(userId);
+
+                // Kuyrukta bekliyor mu kontrol et
+                if (matchmakingService.isInQueue(userId)) {
+                    // Timeout kontrolü
+                    if (matchmakingService.isQueueTimedOut(userId)) {
+                        // Timeout oldu, kullanıcıyı bildir
+                        Map<String, Object> timeoutResponse = new HashMap<>();
+                        timeoutResponse.put("status", "timeout");
+                        timeoutResponse.put("message", "Eşleşme bulunamadı. Lütfen tekrar deneyin.");
+                        client.sendEvent("queue_timeout", timeoutResponse);
+
+                        // Kuyruktan çıkar
+                        matchmakingService.leaveQueue(userId);
+                        System.out.println("Queue timeout for user: " + userId);
+                    } else {
+                        // Bekleme süresini gönder
+                        Map<String, Object> statusResponse = new HashMap<>();
+                        statusResponse.put("queueSize", matchmakingService.getQueueSize());
+                        statusResponse.put("waitingTime", matchmakingService.getWaitingTime(userId));
+                        client.sendEvent("queue_status", statusResponse);
+                    }
+                }
+            }
+        });
+
         // leave_queue event listener
         socketIOServer.addEventListener("leave_queue", String.class, (client, data, ackRequest) -> {
             String userId = client.get("userId");

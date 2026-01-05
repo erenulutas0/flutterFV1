@@ -33,20 +33,28 @@ class MatchmakingService extends ChangeNotifier {
   String? _userId;
   int _queueSize = 0;
   String? _errorMessage;
+  int _waitingTimeSeconds = 0; // Bekleme süresi (saniye)
+  Timer? _heartbeatTimer; // Heartbeat timer
+  
+  // Callback'ler
+  Function(String message)? onQueueTimeout; // Kuyruk timeout callback
   
   // Socket.IO port (backend'de 9092 olarak tanımlı)
   static const int _socketPort = 9092;
+  static const int _heartbeatIntervalMs = 5000; // 5 saniye
 
   MatchStatus get status => _status;
   MatchInfo? get matchInfo => _matchInfo;
   int get queueSize => _queueSize;
   String? get errorMessage => _errorMessage;
+  int get waitingTimeSeconds => _waitingTimeSeconds;
   bool get isConnected => _socket?.connected ?? false;
   IO.Socket? get socket => _socket;
   String? get userId => _userId;
 
   // Connection lock için
   Completer<void>? _connectionCompleter;
+
 
   /// Socket.IO'ya bağlan (Bağlantı kurulana kadar bekler)
   Future<void> connect() async {
@@ -142,6 +150,7 @@ class MatchmakingService extends ChangeNotifier {
       debugPrint('MatchmakingService: Disconnected');
       _status = MatchStatus.idle;
       _matchInfo = null;
+      _stopHeartbeat(); // Heartbeat'i durdur
       notifyListeners();
     });
 
@@ -153,11 +162,28 @@ class MatchmakingService extends ChangeNotifier {
       // notifyListeners();
     });
 
-    // Kuyruk durumu
+    // Kuyruk durumu (bekleme süresi dahil)
     _socket!.on('queue_status', (data) {
       debugPrint('MatchmakingService: Queue status: $data');
       _status = MatchStatus.searching;
       _queueSize = data['queueSize'] ?? 0;
+      _waitingTimeSeconds = data['waitingTime'] ?? 0;
+      notifyListeners();
+    });
+
+    // Kuyruk timeout (60 saniye doldu)
+    _socket!.on('queue_timeout', (data) {
+      debugPrint('MatchmakingService: Queue timeout: $data');
+      _status = MatchStatus.idle;
+      _stopHeartbeat();
+      _waitingTimeSeconds = 0;
+      
+      // Callback varsa çağır
+      if (onQueueTimeout != null) {
+        String message = data['message'] ?? 'Eşleşme bulunamadı.';
+        onQueueTimeout!(message);
+      }
+      
       notifyListeners();
     });
 
@@ -165,6 +191,8 @@ class MatchmakingService extends ChangeNotifier {
     _socket!.on('match_found', (data) {
       debugPrint('MatchmakingService: Match found: $data');
       _status = MatchStatus.matched;
+      _stopHeartbeat(); // Arama durdu, heartbeat'i durdur
+      _waitingTimeSeconds = 0;
       _matchInfo = MatchInfo(
         roomId: data['roomId'],
         matchedUserId: data['matchedUserId'],
@@ -182,6 +210,7 @@ class MatchmakingService extends ChangeNotifier {
     // WebRTC sinyalleri VideoCallPage tarafından dinlenecek
     // _socket!.on('webrtc_offer', ...); // Kaldırıldı
   }
+
 
   /// Eşleşme kuyruğuna katıl
   Future<void> joinQueue({String? userId}) async {
@@ -202,20 +231,51 @@ class MatchmakingService extends ChangeNotifier {
 
     _userId = userId ?? DateTime.now().millisecondsSinceEpoch.toString();
     _status = MatchStatus.searching;
+    _waitingTimeSeconds = 0;
     notifyListeners();
 
     _socket!.emit('join_queue', {'userId': _userId});
     debugPrint('MatchmakingService: Joined queue with userId: $_userId');
+    
+    // Heartbeat timer'ı başlat
+    _startHeartbeat();
   }
 
   /// Kuyruktan ayrıl
   void leaveQueue() {
+    _stopHeartbeat(); // Heartbeat'i durdur
+    
     if (_socket != null && _socket!.connected) {
       _socket!.emit('leave_queue', _userId);
     }
     _status = MatchStatus.idle;
+    _waitingTimeSeconds = 0;
     notifyListeners();
   }
+  
+  /// Heartbeat timer'ı başlat
+  void _startHeartbeat() {
+    _stopHeartbeat(); // Önce varsa durdur
+    
+    _heartbeatTimer = Timer.periodic(
+      Duration(milliseconds: _heartbeatIntervalMs),
+      (_) {
+        if (_socket != null && _socket!.connected && _status == MatchStatus.searching) {
+          _socket!.emit('heartbeat', {'userId': _userId});
+          debugPrint('MatchmakingService: Heartbeat sent');
+        }
+      },
+    );
+    debugPrint('MatchmakingService: Heartbeat timer started');
+  }
+  
+  /// Heartbeat timer'ı durdur
+  void _stopHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+    debugPrint('MatchmakingService: Heartbeat timer stopped');
+  }
+
 
   /// Odaya katıl
   void joinRoom(String roomId) {
@@ -268,19 +328,23 @@ class MatchmakingService extends ChangeNotifier {
 
   /// Bağlantıyı kes
   void disconnect() {
+    _stopHeartbeat(); // Heartbeat'i durdur
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
     _status = MatchStatus.idle;
     _matchInfo = null;
+    _waitingTimeSeconds = 0;
     notifyListeners();
   }
 
   @override
   void dispose() {
+    _stopHeartbeat(); // Heartbeat'i durdur
     disconnect();
     super.dispose();
   }
+
 
   // UI Helper methods
   void setInCall() {

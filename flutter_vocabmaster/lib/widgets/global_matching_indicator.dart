@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/global_state.dart';
+import '../services/matchmaking_service.dart';
 
 class GlobalMatchingIndicator extends StatefulWidget {
   const GlobalMatchingIndicator({Key? key}) : super(key: key);
@@ -28,73 +30,93 @@ class _GlobalMatchingIndicatorState extends State<GlobalMatchingIndicator> with 
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 70, // Fixed height
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1e3a8a).withOpacity(0.9), // Dark Blue
-        border: const Border(
-          top: BorderSide(color: Colors.white24, width: 1),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Row(
-        children: [
-          // Animated Radar Icon
-          CustomPaint(
-            painter: RadarPainter(_controller),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFF0ea5e9), // Cyan center
-              ),
-              child: const Icon(Icons.wifi_tethering, color: Colors.white, size: 24),
+    return Consumer<MatchmakingService>(
+      builder: (context, matchmaking, child) {
+        return Container(
+          height: 70, // Fixed height
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1e3a8a).withOpacity(0.9), // Dark Blue
+            border: const Border(
+              top: BorderSide(color: Colors.white24, width: 1),
             ),
-          ),
-          
-          const SizedBox(width: 16),
-          
-          // Text
-          const Expanded(
-            child: Text(
-              'Eşleşme aranıyor...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, -2),
               ),
-            ),
+            ],
           ),
-          
-          // Close Button
-          GestureDetector(
-            onTap: () {
-              // Cancel matching
-              GlobalState.isMatching.value = false;
-            },
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Colors.redAccent,
-                shape: BoxShape.circle,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Row(
+            children: [
+              // Animated Radar Icon
+              CustomPaint(
+                painter: RadarPainter(_controller),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF0ea5e9), // Cyan center
+                  ),
+                  child: const Icon(Icons.wifi_tethering, color: Colors.white, size: 24),
+                ),
               ),
-              child: const Icon(Icons.close, color: Colors.white, size: 20),
-            ),
+              
+              const SizedBox(width: 16),
+              
+              // Text with waiting time
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Eşleşme aranıyor...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (matchmaking.waitingTimeSeconds > 0)
+                      Text(
+                        '${matchmaking.waitingTimeSeconds} saniye',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.6),
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              
+              // Close Button
+              GestureDetector(
+                onTap: () {
+                  // Cancel matching - MatchmakingService üzerinden
+                  matchmaking.leaveQueue();
+                  GlobalState.isMatching.value = false;
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Colors.redAccent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 20),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
+
 
 class RadarPainter extends CustomPainter {
   final Animation<double> animation;
