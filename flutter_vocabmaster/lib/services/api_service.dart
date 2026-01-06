@@ -102,7 +102,7 @@ class ApiService {
     try {
       final url = await baseUrl;
       final response = await http.delete(Uri.parse('$url/words/$id'));
-      if (response.statusCode != 200 && response.statusCode != 204) {
+      if (response.statusCode != 200 && response.statusCode != 204 && response.statusCode != 404) {
         throw Exception('Failed to delete word: ${response.statusCode}');
       }
     } catch (e) {
@@ -142,7 +142,7 @@ class ApiService {
       final response = await http.delete(
         Uri.parse('$url/words/$wordId/sentences/$sentenceId'),
       );
-      if (response.statusCode != 200 && response.statusCode != 204) {
+      if (response.statusCode != 200 && response.statusCode != 204 && response.statusCode != 404) {
         throw Exception('Failed to delete sentence: ${response.statusCode}');
       }
     } catch (e) {

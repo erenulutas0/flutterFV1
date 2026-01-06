@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/bottom_nav.dart';
 import '../main.dart';
+import '../services/auth_service.dart';
+import '../services/user_data_service.dart';
+import 'auth_screen.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -18,6 +21,91 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _emailNotifications = true;
   bool _achievementNotifications = true;
   bool _friendRequestNotifications = true;
+
+  // Kullanıcı verileri
+  Map<String, dynamic>? _user;
+  bool _isLoading = true;
+  
+  // Gerçek veriler
+  final UserDataService _userDataService = UserDataService();
+  int _totalWords = 0;
+  int _streak = 0;
+  int _totalXp = 0;
+  int _level = 1;
+  List<Map<String, dynamic>> _friends = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final authService = AuthService();
+    final user = await authService.getUser();
+    
+    // Gerçek verileri yükle
+    final stats = await _userDataService.getAllStats();
+    final friends = await _userDataService.getFriends();
+    
+    setState(() {
+      _user = user;
+      _totalWords = stats['totalWords'] ?? 0;
+      _streak = stats['streak'] ?? 0;
+      _totalXp = stats['xp'] ?? 0;
+      _level = stats['level'] ?? 1;
+      _friends = friends;
+      _isLoading = false;
+    });
+  }
+
+  void _copyUserTag() {
+    final userTag = _user?['userTag'] ?? '';
+    if (userTag.isNotEmpty) {
+      // Clipboard'a kopyala
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$userTag panoya kopyalandı!'),
+          backgroundColor: const Color(0xFF06b6d4),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1e293b),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Çıkış Yap', style: TextStyle(color: Colors.white)),
+        content: const Text('Hesabınızdan çıkmak istediğinize emin misiniz?', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Çıkış Yap', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await AuthService().logout();
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const AuthScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +184,23 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildProfileCard() {
+    final displayName = _user?['displayName'] ?? 'Kullanıcı';
+    final userTag = _user?['userTag'] ?? '#00000';
+    final email = _user?['email'] ?? '';
+    final level = _user?['level'] ?? 1;
+    final totalXp = _user?['totalXp'] ?? 0;
+    final currentStreak = _user?['currentStreak'] ?? 0;
+    final wordsLearned = _user?['wordsLearned'] ?? 0;
+    final avatarSeed = displayName.replaceAll(' ', '');
+
+    // XP hesaplama
+    final xpThresholds = [0, 100, 250, 500, 1000, 2000, 3500, 5500, 8000, 11000, 15000];
+    final currentLevelXp = level <= 10 ? xpThresholds[level - 1] : 15000 + ((level - 11) * 5000);
+    final nextLevelXp = level <= 10 ? xpThresholds[level] : 15000 + ((level - 10) * 5000);
+    final xpProgress = totalXp - currentLevelXp;
+    final xpNeeded = nextLevelXp - currentLevelXp;
+    final progressValue = xpNeeded > 0 ? xpProgress / xpNeeded : 0.0;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -114,8 +219,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
-                  image: const DecorationImage(
-                    image: NetworkImage('https://api.dicebear.com/7.x/avataaars/png?seed=Eren'),
+                  image: DecorationImage(
+                    image: NetworkImage('https://api.dicebear.com/7.x/avataaars/png?seed=$avatarSeed'),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -129,14 +234,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     color: const Color(0xFF0ea5e9),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.emoji_events, color: Colors.white, size: 16),
-                      SizedBox(width: 4),
+                      const Icon(Icons.emoji_events, color: Colors.white, size: 16),
+                      const SizedBox(width: 4),
                       Text(
-                        '5',
-                        style: TextStyle(
+                        '$level',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -149,32 +254,61 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Eren',
-            style: TextStyle(
+          Text(
+            displayName,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
+          // UserTag - Discord tarzı
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF06b6d4), Color(0xFF3b82f6)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              userTag,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           Text(
-            'eren@vocabmaster.com',
-            style: TextStyle(
-              color: const Color(0xFF38bdf8),
+            email,
+            style: const TextStyle(
+              color: Color(0xFF38bdf8),
               fontSize: 14,
             ),
           ),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0369a1).withOpacity(0.3),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Text(
-              'Ocak 2025 tarihinden beri üye',
-              style: TextStyle(color: Color(0xFF7dd3fc), fontSize: 12),
+          GestureDetector(
+            onTap: _copyUserTag,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0369a1).withOpacity(0.3),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.copy, color: Color(0xFF7dd3fc), size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    'ID\'yi kopyala: $userTag',
+                    style: const TextStyle(color: Color(0xFF7dd3fc), fontSize: 12),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -192,54 +326,67 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Builder(
+            builder: (context) {
+              // XP hesaplama - gerçek veriler
+              final xpThresholds = [0, 100, 250, 500, 1000, 2000, 3500, 5500, 8000, 11000, 15000];
+              final currentLevelXp = _level <= 10 ? xpThresholds[_level - 1] : 15000 + ((_level - 11) * 5000);
+              final nextLevelXp = _level <= 10 ? xpThresholds[_level] : 15000 + ((_level - 10) * 5000);
+              final xpProgress = _totalXp - currentLevelXp;
+              final xpNeeded = nextLevelXp - currentLevelXp;
+              final progressValue = xpNeeded > 0 ? xpProgress / xpNeeded : 0.0;
+              final xpRemaining = nextLevelXp - _totalXp;
+
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'XP İlerlemesi',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'XP İlerlemesi',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '$_totalXp / $nextLevelXp',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: progressValue.clamp(0.0, 1.0),
+                        backgroundColor: Colors.white.withOpacity(0.1),
+                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3b82f6)),
+                        minHeight: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Text(
-                      '450 / 600',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      'Sonraki seviyeye $xpRemaining XP kaldı',
+                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: 450 / 600,
-                    backgroundColor: Colors.white.withOpacity(0.1),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3b82f6)),
-                    minHeight: 12,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Sonraki seviyeye 150 XP kaldı',
-                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
-                ),
-              ],
-            ),
+              );
+            },
           ),
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(child: _buildStatItem(Icons.emoji_events_outlined, '124', 'Toplam\nKelime', const Color(0xFF0ea5e9))),
+              Expanded(child: _buildStatItem(Icons.emoji_events_outlined, _totalWords.toString(), 'Toplam\nKelime', const Color(0xFF0ea5e9))),
               const SizedBox(width: 12),
-              Expanded(child: _buildStatItem(Icons.calendar_today_outlined, '7', 'Gün Serisi', const Color(0xFF0ea5e9))),
+              Expanded(child: _buildStatItem(Icons.calendar_today_outlined, _streak.toString(), 'Gün Serisi', const Color(0xFF0ea5e9))),
               const SizedBox(width: 12),
-              Expanded(child: _buildStatItem(Icons.military_tech_outlined, '12', 'Başarılar', const Color(0xFF0ea5e9))),
+              Expanded(child: _buildStatItem(Icons.military_tech_outlined, _level.toString(), 'Seviye', const Color(0xFF0ea5e9))),
             ],
           ),
         ],
@@ -746,6 +893,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildFriendsSection() {
+    final onlineFriends = _friends.where((f) => f['isOnline'] == true).toList();
+    final offlineFriends = _friends.where((f) => f['isOnline'] != true).toList();
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -769,41 +919,81 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ],
               ),
-              Container(
-                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                 decoration: BoxDecoration(
-                   color: const Color(0xFF059669).withOpacity(0.2),
-                   borderRadius: BorderRadius.circular(8),
-                   border: Border.all(color: const Color(0xFF059669)),
-                 ),
-                 child: const Text('3 Çevrimiçi', style: TextStyle(color: Color(0xFF34d399), fontSize: 12)),
-              ),
+              if (onlineFriends.isNotEmpty)
+                Container(
+                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                   decoration: BoxDecoration(
+                     color: const Color(0xFF059669).withOpacity(0.2),
+                     borderRadius: BorderRadius.circular(8),
+                     border: Border.all(color: const Color(0xFF059669)),
+                   ),
+                   child: Text('${onlineFriends.length} Çevrimiçi', style: const TextStyle(color: Color(0xFF34d399), fontSize: 12)),
+                ),
             ],
           ),
           const SizedBox(height: 24),
           
-          Text(
-            'ÇEVRİMİÇİ',
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          _buildFriendItem('Ayşe K.', 'Seviye 8', true, '👩', 1),
-          const SizedBox(height: 12),
-          _buildFriendItem('Mehmet Y.', 'Seviye 12', true, '👨', 2),
-           const SizedBox(height: 12),
-          _buildFriendItem('Sarah J.', 'Seviye 6', true, '👱‍♀️', 3),
-
-          const SizedBox(height: 24),
-           Text(
-            'ÇEVRİMDIŞI',
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          _buildFriendItem('Carlos M.', '2 saat önce', false, '👨‍🦱', 4),
-          const SizedBox(height: 12),
-          _buildFriendItem('Emma T.', '1 gün önce', false, '👩‍🦰', 5),
-          const SizedBox(height: 12),
-          _buildFriendItem('David L.', '3 gün önce', false, '👴', 6),
+          if (_friends.isEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.person_add_outlined, color: Colors.white.withOpacity(0.3), size: 48),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Henüz arkadaşınız yok',
+                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Kullanıcı ID\'si ile arkadaş ekleyerek birlikte pratik yapabilirsiniz!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            if (onlineFriends.isNotEmpty) ...[
+              Text(
+                'ÇEVRİMİÇİ',
+                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              ...onlineFriends.map((friend) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildFriendItem(
+                  friend['name'] ?? '',
+                  friend['status'] ?? '',
+                  true,
+                  friend['avatar'] ?? '👤',
+                  friend['id'] ?? 0,
+                ),
+              )),
+              const SizedBox(height: 12),
+            ],
+            if (offlineFriends.isNotEmpty) ...[
+              Text(
+                'ÇEVRİMDIŞI',
+                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              ...offlineFriends.map((friend) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildFriendItem(
+                  friend['name'] ?? '',
+                  friend['lastSeen'] ?? 'Uzun süredir çevrimdışı',
+                  false,
+                  friend['avatar'] ?? '👤',
+                  friend['id'] ?? 0,
+                ),
+              )),
+            ],
+          ],
         ],
       ),
     );
@@ -875,7 +1065,7 @@ class _ProfilePageState extends State<ProfilePage> {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: _handleLogout,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF4c1d95).withOpacity(0.5),
           foregroundColor: const Color(0xFFe879f9),

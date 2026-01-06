@@ -4,18 +4,33 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_achievements")
+@Table(name = "user_achievements", indexes = {
+        @Index(name = "idx_achievement_user", columnList = "user_id")
+})
 public class UserAchievement {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id")
-    private Long userId = 1L;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(name = "achievement_code", nullable = false)
     private String achievementCode;
+
+    @Column(name = "achievement_name")
+    private String achievementName;
+
+    @Column(name = "achievement_description")
+    private String achievementDescription;
+
+    @Column(name = "achievement_icon")
+    private String achievementIcon;
+
+    @Column(name = "xp_reward")
+    private Integer xpReward = 0;
 
     @Column(name = "unlocked_at")
     private LocalDateTime unlockedAt;
@@ -24,10 +39,10 @@ public class UserAchievement {
         this.unlockedAt = LocalDateTime.now();
     }
 
-    public UserAchievement(Long userId, String achievementCode) {
-        this.userId = userId;
+    public UserAchievement(User user, String achievementCode) {
+        this();
+        this.user = user;
         this.achievementCode = achievementCode;
-        this.unlockedAt = LocalDateTime.now();
     }
 
     // Getters and Setters
@@ -39,12 +54,12 @@ public class UserAchievement {
         this.id = id;
     }
 
-    public Long getUserId() {
-        return userId;
+    public User getUser() {
+        return user;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setUser(User user) {
+        this.user = user;
     }
 
     public String getAchievementCode() {
@@ -53,6 +68,38 @@ public class UserAchievement {
 
     public void setAchievementCode(String achievementCode) {
         this.achievementCode = achievementCode;
+    }
+
+    public String getAchievementName() {
+        return achievementName;
+    }
+
+    public void setAchievementName(String achievementName) {
+        this.achievementName = achievementName;
+    }
+
+    public String getAchievementDescription() {
+        return achievementDescription;
+    }
+
+    public void setAchievementDescription(String achievementDescription) {
+        this.achievementDescription = achievementDescription;
+    }
+
+    public String getAchievementIcon() {
+        return achievementIcon;
+    }
+
+    public void setAchievementIcon(String achievementIcon) {
+        this.achievementIcon = achievementIcon;
+    }
+
+    public Integer getXpReward() {
+        return xpReward;
+    }
+
+    public void setXpReward(Integer xpReward) {
+        this.xpReward = xpReward;
     }
 
     public LocalDateTime getUnlockedAt() {

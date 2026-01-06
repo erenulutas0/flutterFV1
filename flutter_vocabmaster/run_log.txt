@@ -1,0 +1,152 @@
+Launching lib\main.dart on SM S911B in debug mode...
+Running Gradle task 'assembleDebug'...                             11,2s
+ÔêÜ Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...          37,2s
+W/FlutterWebRTCPlugin( 9163): audioFocusChangeListener [Earpiece(name=Earpiece)] Earpiece(name=Earpiece)
+W/FlutterWebRTCPlugin( 9163): audioFocusChangeListener [Speakerphone(name=Speakerphone), Earpiece(name=Earpiece)] Speakerphone(name=Speakerphone)
+Syncing files to device SM S911B...                             
+D/ConnectivityManager( 9163): StackLog: [android.net.ConnectivityManager.sendRequestForNetwork(ConnectivityManager.java:4736)] [android.net.ConnectivityManager.registerDefaultNetworkCallbackForUid(ConnectivityManager.java:5461)] [android.net.ConnectivityManager.registerDefaultNetworkCallback(ConnectivityManager.java:5428)] [android.net.ConnectivityManager.registerDefaultNetworkCallback(ConnectivityManager.java:5402)] [dev.fluttercommunity.plus.connectivity.ConnectivityBroadcastReceiver.onListen(ConnectivityBroadcastReceiver.java:77)] [io.flutter.plugin.common.EventChannel$IncomingStreamRequestHandler.onListen(EventChannel.java:218)] [io.flutter.plugin.common.EventChannel$IncomingStreamRequestHandler.onMessage(EventChannel.java:197)] [io.flutter.embedding.engine.dart.DartMessenger.invokeHandler(DartMessenger.java:292)] [io.flutter.embedding.engine.dart.DartMessenger.lambda$dispatchMessageToQueue$0$io-flutter-embedding-engine-dart-DartMessenger(DartMessenger.java:319)] [io.flutter.embedding.engine.dart.DartMessenger$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)]
+I/TextToSpeech( 9163): Connected to TTS engine
+I/TextToSpeech( 9163): Setting up the connection to TTS engine...
+Syncing files to device SM S911B...                                110ms
+
+Flutter run key commands.
+r Hot reload. 
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on SM S911B is available at: http://127.0.0.1:53077/Lhywb0WBFeo=/
+The Flutter DevTools debugger and profiler on SM S911B is available at: http://127.0.0.1:9100?uri=http://127.0.0.1:53077/Lhywb0WBFeo=/
+I/flutter ( 9163): Ô£à ─░lk veri y├╝klemesi tamamland─▒: 407 kelime, 1293 c├╝mle
+I/BLASTBufferQueue( 9163): [7b8d583 SurfaceView[com.ingilizce.calismaapp/com.example.flutter_vocabmaster.MainActivity]@0#1](f:0,a:0,s:0) onFrameAvailable the first frame is available
+I/SurfaceComposerClient( 9163): apply transaction with the first frame. layerId: 214224, bufferData(ID: 39354785333248, frameNumber: 1)
+D/SurfaceView( 9163): 129553795 setAlpha: alpha=1.0
+I/SurfaceView( 9163): 129553795 Changes: creating=false format=false size=false visible=false alpha=true hint=false left=false top=false z=false attached=true lifecycleStrategy=false
+I/SurfaceView( 9163): 129553795 Cur surface: Surface(name=null mNativeObject=-5476376666889023744)/@0x683afc0
+D/SurfaceComposerClient( 9163): setCornerRadius ## 7b8d583 SurfaceView[com.ingilizce.calismaapp/com.example.flutter_vocabmaster.MainActivity]@0#214223 cornerRadius=0.000000
+I/SV[129553795 MainActivity]( 9163): updateSurface: mVisible = true mSurface.isValid() = true
+I/SV[129553795 MainActivity]( 9163): updateSurface: mSurfaceCreated = true surfaceChanged = false visibleChanged = false
+I/SurfaceView( 9163): 129553795 surfaceRedrawNeeded
+I/SurfaceView( 9163): 129553795 finishedDrawing
+V/SurfaceView( 9163): Layout: x=0 y=0 w=1080 h=2196, frame=Rect(0, 0 - 1080, 2196)
+D/VRI[MainActivity]@75cbbe1( 9163): Setup new sync=wmsSync-VRI[MainActivity]@75cbbe1#2
+I/VRI[MainActivity]@75cbbe1( 9163): Creating new active sync group VRI[MainActivity]@75cbbe1#3
+D/VRI[MainActivity]@75cbbe1( 9163): Draw frame after cancel
+D/VRI[MainActivity]@75cbbe1( 9163): registerCallbacksForSync syncBuffer=false
+D/SurfaceView( 9163): 129553795 updateSurfacePosition RenderWorker, frameNr = 1, position = [0, 0, 1080, 2196] surfaceSize = 1080x2196
+I/SV[129553795 MainActivity]( 9163): uSP: rtp = Rect(0, 0 - 1080, 2196) rtsw = 1080 rtsh = 2196
+I/SV[129553795 MainActivity]( 9163): onSSPAndSRT: pl = 0 pt = 0 sx = 1.0 sy = 1.0
+I/SV[129553795 MainActivity]( 9163): aOrMT: VRI[MainActivity]@75cbbe1 t = android.view.SurfaceControl$Transaction@fa1b1a1 fN = 1 android.view.SurfaceView.-$$Nest$mapplyOrMergeTransaction:0 android.view.SurfaceView$SurfaceViewPositionUpdateListener.positionChanged:1932 android.graphics.RenderNode$CompositePositionUpdateListener.positionChanged:401 
+I/VRI[MainActivity]@75cbbe1( 9163): mWNT: t=0xb40000701c553880 mBlastBufferQueue=0xb400006fc2296000 fn= 1 HdrRenderState mRenderHdrSdrRatio=1.0 caller= android.view.SurfaceView.applyOrMergeTransaction:1863 android.view.SurfaceView.-$$Nest$mapplyOrMergeTransaction:0 android.view.SurfaceView$SurfaceViewPositionUpdateListener.positionChanged:1932 
+D/VRI[MainActivity]@75cbbe1( 9163): Received frameDrawingCallback syncResult=0 frameNum=1.
+I/VRI[MainActivity]@75cbbe1( 9163): mWNT: t=0xb400006f1b6bf500 mBlastBufferQueue=0xb400006fc2296000 fn= 1 HdrRenderState mRenderHdrSdrRatio=1.0 caller= android.view.ViewRootImpl$12.onFrameDraw:15441 android.view.ThreadedRenderer$1.onFrameDraw:718 <bottom of call stack> 
+I/VRI[MainActivity]@75cbbe1( 9163): Setting up sync and frameCommitCallback
+I/BLASTBufferQueue( 9163): [VRI[MainActivity]@75cbbe1#0](f:0,a:0,s:0) onFrameAvailable the first frame is available
+I/SurfaceComposerClient( 9163): apply transaction with the first frame. layerId: 214219, bufferData(ID: 39354785333250, frameNumber: 1)
+I/VRI[MainActivity]@75cbbe1( 9163): Received frameCommittedCallback lastAttemptedDrawFrameNum=1 didProduceBuffer=true
+D/HWUI    ( 9163): CFMS:: SetUp Pid : 9163    Tid : 9184
+D/VRI[MainActivity]@75cbbe1( 9163): reportDrawFinished seqId=0
+D/VRI[MainActivity]@75cbbe1( 9163): mThreadedRenderer.initializeIfNeeded()#2 mSurface={isValid=true 0xb4000070179c1600}
+D/InputMethodManagerUtils( 9163): startInputInner - Id : 0
+I/InputMethodManager( 9163): startInputInner - IInputMethodManagerGlobalInvoker.startInputOrWindowGainedFocus
+I/InputMethodManager( 9163): handleMessage: setImeVisibility visible=false
+D/InsetsController( 9163): hide(ime(), fromIme=false)
+I/ImeTracker( 9163): com.ingilizce.calismaapp:f6216f40: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+D/InputTransport( 9163): Input channel constructed: 'ClientS', fd=171
+D/ProfileInstaller( 9163): Installing profile for com.ingilizce.calismaapp
+I/VRI[MainActivity]@75cbbe1( 9163): ViewPostIme pointer 0
+I/VRI[MainActivity]@75cbbe1( 9163): call setFrameRateCategory for touch hint category=high hint, reason=touch, vri=VRI[MainActivity]@75cbbe1
+I/VRI[MainActivity]@75cbbe1( 9163): ViewPostIme pointer 1
+I/VRI[MainActivity]@75cbbe1( 9163): ViewPostIme pointer 0
+I/VRI[MainActivity]@75cbbe1( 9163): ViewPostIme pointer 1
+I/VRI[MainActivity]@75cbbe1( 9163): ViewPostIme pointer 0
+I/VRI[MainActivity]@75cbbe1( 9163): ViewPostIme pointer 1
+I/VRI[MainActivity]@75cbbe1( 9163): ViewPostIme pointer 0
+I/VRI[MainActivity]@75cbbe1( 9163): ViewPostIme pointer 1
+I/VRI[MainActivity]@75cbbe1( 9163): ViewPostIme pointer 0
+I/VRI[MainActivity]@75cbbe1( 9163): ViewPostIme pointer 1
+W/WindowOnBackDispatcher( 9163): OnBackInvokedCallback is not enabled for the application.
+W/WindowOnBackDispatcher( 9163): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+I/flutter ( 9163): ­şô┤ Offline mod: Cached session ile otomatik giri┼ş
+I/flutter ( 9163): ­şöı UserDataService: Checking account - email: eren@gmail.com, userTag: #81726
+I/flutter ( 9163): ­şöı UserDataService: Main account email: eren@gmail.com, tag: #81726
+I/flutter ( 9163): ­şöı UserDataService: isMainAccount = true
+I/flutter ( 9163): ! DEBUG: Forcing isMainAccount = true
+I/flutter ( 9163): ­şöı UserDataService: Checking account - email: eren@gmail.com, userTag: #81726
+I/flutter ( 9163): ­şöı UserDataService: Main account email: eren@gmail.com, tag: #81726
+I/flutter ( 9163): ­şöı UserDataService: isMainAccount = true
+I/flutter ( 9163): ! DEBUG: Forcing isMainAccount = true
+I/flutter ( 9163): ­şôÜ UserDataService.getWords: isMainAccount = true
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: isOnline = true
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: Fetching from API...
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: API returned 407 words
+I/flutter ( 9163): ­şôÜ UserDataService.getWords: Found 407 words
+I/flutter ( 9163): ­şöı UserDataService: Checking account - email: eren@gmail.com, userTag: #81726
+I/flutter ( 9163): ­şöı UserDataService: Main account email: eren@gmail.com, tag: #81726
+I/flutter ( 9163): ­şöı UserDataService: isMainAccount = true
+I/flutter ( 9163): ! DEBUG: Forcing isMainAccount = true
+I/flutter ( 9163): ­şöı UserDataService: Checking account - email: eren@gmail.com, userTag: #81726
+I/flutter ( 9163): ­şöı UserDataService: Main account email: eren@gmail.com, tag: #81726
+I/flutter ( 9163): ­şöı UserDataService: isMainAccount = true
+I/flutter ( 9163): ! DEBUG: Forcing isMainAccount = true
+I/flutter ( 9163): ­şôÜ UserDataService.getWords: isMainAccount = true
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: isOnline = true
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: Fetching from API...
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: API returned 407 words
+I/flutter ( 9163): ­şôÜ UserDataService.getWords: Found 407 words
+I/flutter ( 9163): ­şöı UserDataService: Checking account - email: eren@gmail.com, userTag: #81726
+I/flutter ( 9163): ­şöı UserDataService: Main account email: eren@gmail.com, tag: #81726
+I/flutter ( 9163): ­şöı UserDataService: isMainAccount = true
+I/flutter ( 9163): ! DEBUG: Forcing isMainAccount = true
+I/flutter ( 9163): ­şöı UserDataService: Checking account - email: eren@gmail.com, userTag: #81726
+I/flutter ( 9163): ­şöı UserDataService: Main account email: eren@gmail.com, tag: #81726
+I/flutter ( 9163): ­şöı UserDataService: isMainAccount = true
+I/flutter ( 9163): ! DEBUG: Forcing isMainAccount = true
+I/flutter ( 9163): ­şôÜ UserDataService.getWords: isMainAccount = true
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: isOnline = true
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: Fetching from API...
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: API returned 407 words
+I/flutter ( 9163): ­şôÜ UserDataService.getWords: Found 407 words
+I/flutter ( 9163): ­şöı UserDataService: Checking account - email: eren@gmail.com, userTag: #81726
+I/flutter ( 9163): ­şöı UserDataService: Main account email: eren@gmail.com, tag: #81726
+I/flutter ( 9163): ­şöı UserDataService: isMainAccount = true
+I/flutter ( 9163): ! DEBUG: Forcing isMainAccount = true
+I/flutter ( 9163): ­şöı UserDataService: Checking account - email: eren@gmail.com, userTag: #81726
+I/flutter ( 9163): ­şöı UserDataService: Main account email: eren@gmail.com, tag: #81726
+I/flutter ( 9163): ­şöı UserDataService: isMainAccount = true
+I/flutter ( 9163): ! DEBUG: Forcing isMainAccount = true
+I/flutter ( 9163): ­şöı UserDataService: Checking account - email: eren@gmail.com, userTag: #81726
+I/flutter ( 9163): ­şöı UserDataService: Main account email: eren@gmail.com, tag: #81726
+I/flutter ( 9163): ­şöı UserDataService: isMainAccount = true
+I/flutter ( 9163): ! DEBUG: Forcing isMainAccount = true
+I/flutter ( 9163): ­şôÜ UserDataService.getWords: isMainAccount = true
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: isOnline = true
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: Fetching from API...
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: API returned 407 words
+I/flutter ( 9163): ­şôÜ UserDataService.getWords: Found 407 words
+I/flutter ( 9163): ­şöı UserDataService: Checking account - email: eren@gmail.com, userTag: #81726
+I/flutter ( 9163): ­şöı UserDataService: Main account email: eren@gmail.com, tag: #81726
+I/flutter ( 9163): ­şöı UserDataService: isMainAccount = true
+I/flutter ( 9163): ! DEBUG: Forcing isMainAccount = true
+I/flutter ( 9163): ­şôÜ UserDataService.getWords: isMainAccount = true
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: isOnline = true
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: Fetching from API...
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: API returned 407 words
+I/flutter ( 9163): ­şôÜ UserDataService.getWords: Found 407 words
+I/flutter ( 9163): ­şöı UserDataService: Checking account - email: eren@gmail.com, userTag: #81726
+I/flutter ( 9163): ­şöı UserDataService: Main account email: eren@gmail.com, tag: #81726
+I/flutter ( 9163): ­şöı UserDataService: isMainAccount = true
+I/flutter ( 9163): ! DEBUG: Forcing isMainAccount = true
+I/flutter ( 9163): ­şôÜ UserDataService.getWords: isMainAccount = true
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: isOnline = true
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: Fetching from API...
+I/flutter ( 9163): ­şôĞ OfflineSyncService.getAllWords: API returned 407 words
+I/flutter ( 9163): ­şôÜ UserDataService.getWords: Found 407 words
+I/VRI[MainActivity]@75cbbe1( 9163): call setFrameRateCategory for touch hint category=no preference, reason=boost timeout, vri=VRI[MainActivity]@75cbbe1
+I/VRI[MainActivity]@75cbbe1( 9163): ViewPostIme pointer 0
+I/VRI[MainActivity]@75cbbe1( 9163): call setFrameRateCategory for touch hint category=high hint, reason=touch, vri=VRI[MainActivity]@75cbbe1
+I/VRI[MainActivity]@75cbbe1( 9163): ViewPostIme pointer 1
+Lost connection to device.

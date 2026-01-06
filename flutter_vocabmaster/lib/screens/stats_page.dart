@@ -2,9 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/bottom_nav.dart';
+import '../services/user_data_service.dart';
 
-class StatsPage extends StatelessWidget {
+class StatsPage extends StatefulWidget {
   const StatsPage({Key? key}) : super(key: key);
+
+  @override
+  State<StatsPage> createState() => _StatsPageState();
+}
+
+class _StatsPageState extends State<StatsPage> {
+  final UserDataService _userDataService = UserDataService();
+  
+  bool _isLoading = true;
+  int _totalWords = 0;
+  int _streak = 0;
+  List<Map<String, dynamic>> _weeklyActivity = [];
+  List<Map<String, dynamic>> _achievements = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final stats = await _userDataService.getAllStats();
+      final weekly = await _userDataService.getWeeklyActivity();
+      final achievements = await _userDataService.getAchievements();
+      
+      if (mounted) {
+        setState(() {
+          _totalWords = stats['totalWords'] ?? 0;
+          _streak = stats['streak'] ?? 0;
+          _weeklyActivity = weekly;
+          _achievements = achievements;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading stats: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,75 +54,72 @@ class StatsPage extends StatelessWidget {
         children: [
           const AnimatedBackground(isDark: true),
           SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  const Row(
-                    children: [
-                      Icon(Icons.trending_up, color: Colors.white, size: 28),
-                      SizedBox(width: 12),
-                      Text(
-                        'İstatistiklerim',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+            child: _isLoading
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFF06b6d4)))
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    const Row(
+                      children: [
+                        Icon(Icons.trending_up, color: Colors.white, size: 28),
+                        SizedBox(width: 12),
+                        Text(
+                          'İstatistiklerim',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Top Stats Cards
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTopStatCard(
-                          icon: Icons.menu_book,
-                          value: '124',
-                          label: 'Toplam Kelime',
-                          color: const Color(0xFF06b6d4),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Top Stats Cards
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildTopStatCard(
+                            icon: Icons.menu_book,
+                            value: _totalWords.toString(),
+                            label: 'Toplam Kelime',
+                            color: const Color(0xFF06b6d4),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildTopStatCard(
-                          icon: Icons.local_fire_department,
-                          value: '7',
-                          label: 'Gün Serisi',
-                          color: const Color(0xFF06b6d4),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildTopStatCard(
+                            icon: Icons.local_fire_department,
+                            value: _streak.toString(),
+                            label: 'Gün Serisi',
+                            color: const Color(0xFF06b6d4),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Weekly Progress Chart
-                  _buildWeeklyProgressCard(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // XP Progress Chart
-                  _buildXPProgressCard(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Category Distribution
-                  _buildCategoryDistribution(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Achievements
-                  _buildAchievements(),
-                  
-                  const SizedBox(height: 80),
-                ],
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Weekly Progress Chart
+                    _buildWeeklyProgressCard(),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // XP Progress Chart
+                    _buildXPProgressCard(),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Achievements
+                    _buildAchievements(),
+                    
+                    const SizedBox(height: 80),
+                  ],
+                ),
               ),
-            ),
           ),
         ],
       ),
@@ -141,15 +179,57 @@ class StatsPage extends StatelessWidget {
   }
 
   Widget _buildWeeklyProgressCard() {
-    final weeklyData = [
-      {'day': 'Pzt', 'value': 5.0},
-      {'day': 'Sal', 'value': 7.0},
-      {'day': 'Çar', 'value': 3.0},
-      {'day': 'Per', 'value': 6.0},
-      {'day': 'Cum', 'value': 4.0},
-      {'day': 'Cmt', 'value': 8.0},
-      {'day': 'Paz', 'value': 2.0},
-    ];
+    // Haftalık aktivite verilerinden bar chart data oluştur
+    final weeklyData = _weeklyActivity.asMap().entries.map((entry) {
+      final dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+      final dayIndex = entry.key;
+      final count = entry.value['count'] as int? ?? 0;
+      return {
+        'day': dayNames[dayIndex],
+        'value': count.toDouble(),
+      };
+    }).toList();
+
+    // Eğer veri yoksa default boş göster
+    if (weeklyData.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1e3a8a).withOpacity(0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.calendar_today, color: Color(0xFF06b6d4), size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Haftalık İlerleme',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Center(
+              child: Text(
+                'Henüz veri yok',
+                style: TextStyle(color: Colors.white.withOpacity(0.5)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final maxY = weeklyData.map((d) => d['value'] as double).reduce((a, b) => a > b ? a : b);
+    final chartMaxY = maxY > 0 ? (maxY + 2).ceilToDouble() : 10.0;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -181,7 +261,7 @@ class StatsPage extends StatelessWidget {
             child: BarChart(
               BarChartData(
                 alignment: BarChartAlignment.spaceAround,
-                maxY: 10,
+                maxY: chartMaxY,
                 barTouchData: BarTouchData(enabled: false),
                 titlesData: FlTitlesData(
                   show: true,
@@ -250,15 +330,54 @@ class StatsPage extends StatelessWidget {
   }
 
   Widget _buildXPProgressCard() {
-    final xpData = [
-      FlSpot(0, 150),
-      FlSpot(1, 210),
-      FlSpot(2, 90),
-      FlSpot(3, 180),
-      FlSpot(4, 120),
-      FlSpot(5, 240),
-      FlSpot(6, 60),
-    ];
+    // Haftalık XP verilerini hesapla
+    final xpData = _weeklyActivity.asMap().entries.map((entry) {
+      final count = entry.value['count'] as int? ?? 0;
+      return FlSpot(entry.key.toDouble(), (count * 10).toDouble());
+    }).toList();
+
+    // Eğer veri yoksa veya tüm değerler 0 ise
+    final hasData = xpData.isNotEmpty && xpData.any((spot) => spot.y > 0);
+
+    if (!hasData) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1e3a8a).withOpacity(0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.stars, color: Color(0xFF06b6d4), size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'XP Gelişimi',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Center(
+              child: Text(
+                'Henüz XP kazanılmadı',
+                style: TextStyle(color: Colors.white.withOpacity(0.5)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final maxY = xpData.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    final chartMaxY = maxY > 0 ? (maxY * 1.2).ceilToDouble() : 100.0;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -337,7 +456,7 @@ class StatsPage extends StatelessWidget {
                 minX: 0,
                 maxX: 6,
                 minY: 0,
-                maxY: 300,
+                maxY: chartMaxY,
                 lineBarsData: [
                   LineChartBarData(
                     spots: xpData,
@@ -369,88 +488,7 @@ class StatsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryDistribution() {
-    final categories = [
-      {'name': 'Noun', 'count': 45, 'total': 124},
-      {'name': 'Verb', 'count': 38, 'total': 124},
-      {'name': 'Adjective', 'count': 32, 'total': 124},
-      {'name': 'Adverb', 'count': 9, 'total': 124},
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1e3a8a).withOpacity(0.5),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.category, color: Color(0xFF06b6d4), size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Kategori Dağılımı',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          ...categories.map((cat) {
-            final percentage = ((cat['count'] as int) / (cat['total'] as int) * 100).round();
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        cat['name'] as String,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                      Text(
-                        '${cat['count']} kelime ($percentage%)',
-                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: (cat['count'] as int) / (cat['total'] as int),
-                      backgroundColor: Colors.white.withOpacity(0.1),
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF06b6d4)),
-                      minHeight: 8,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ],
-      ),
-    );
-  }
-
   Widget _buildAchievements() {
-    final achievements = [
-      {'title': 'İlk Adım', 'desc': 'İlk kelimeni öğrendin', 'icon': '🎯', 'unlocked': true},
-      {'title': '7 Gün Serisi', 'desc': '7 gün üst üste çalıştın', 'icon': '🔥', 'unlocked': true},
-      {'title': '100 Kelime', 'desc': '100 kelime öğrendin', 'icon': '💯', 'unlocked': true},
-      {'title': 'Haftalık Kahraman', 'desc': 'Haftada 50 kelime öğren', 'icon': '⭐', 'unlocked': false},
-      {'title': 'Seviye 10', 'desc': '10. seviyeye ulaş', 'icon': '🏆', 'unlocked': false},
-      {'title': 'Usta', 'desc': '500 kelime öğren', 'icon': '👑', 'unlocked': false},
-    ];
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -485,10 +523,10 @@ class StatsPage extends StatelessWidget {
               mainAxisSpacing: 12,
               childAspectRatio: 1.1,
             ),
-            itemCount: achievements.length,
+            itemCount: _achievements.length,
             itemBuilder: (context, index) {
-              final achievement = achievements[index];
-              final unlocked = achievement['unlocked'] as bool;
+              final achievement = _achievements[index];
+              final unlocked = achievement['unlocked'] as bool? ?? false;
               
               return Container(
                 padding: const EdgeInsets.all(16),
@@ -507,7 +545,7 @@ class StatsPage extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      achievement['icon'] as String,
+                      achievement['icon'] as String? ?? '🎯',
                       style: TextStyle(
                         fontSize: 40,
                         color: unlocked ? null : Colors.white.withOpacity(0.3),
@@ -515,7 +553,7 @@ class StatsPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      achievement['title'] as String,
+                      achievement['title'] as String? ?? '',
                       style: TextStyle(
                         color: unlocked ? Colors.white : Colors.white.withOpacity(0.5),
                         fontSize: 14,
@@ -525,7 +563,7 @@ class StatsPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      achievement['desc'] as String,
+                      achievement['desc'] as String? ?? '',
                       style: TextStyle(
                         color: unlocked ? Colors.white70 : Colors.white.withOpacity(0.3),
                         fontSize: 11,

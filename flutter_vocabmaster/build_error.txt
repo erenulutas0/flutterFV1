@@ -1,0 +1,32 @@
+Launching lib\main.dart on SM S911B in debug mode...
+Running Gradle task 'assembleDebug'...                          
+lib/screens/sentences_page.dart:749:4: Error: Expected a class member, but got ','.
+  },
+   ^
+lib/screens/sentences_page.dart:750:5: Error: Expected a class member, but got ')'.
+    );
+    ^
+lib/screens/sentences_page.dart:750:6: Error: Expected a class member, but got ';'.
+    );
+     ^
+lib/screens/sentences_page.dart:752:1: Error: Expected a declaration, but got '}'.
+}
+^
+Target kernel_snapshot_program failed: Exception
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileFlutterBuildDebug'.
+> Process 'command 'C:\flutter\src\flutter\bin\flutter.bat'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BU─░LD FAILED in 4s
+Running Gradle task 'assembleDebug'...                              4,9s
+Error: Gradle task assembleDebug failed with exit code 1

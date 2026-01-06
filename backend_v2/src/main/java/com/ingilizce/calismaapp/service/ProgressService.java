@@ -1,10 +1,12 @@
 package com.ingilizce.calismaapp.service;
 
+import com.ingilizce.calismaapp.entity.User;
 import com.ingilizce.calismaapp.entity.UserAchievement;
 import com.ingilizce.calismaapp.entity.UserProgress;
 import com.ingilizce.calismaapp.model.Achievement;
 import com.ingilizce.calismaapp.repository.UserAchievementRepository;
 import com.ingilizce.calismaapp.repository.UserProgressRepository;
+import com.ingilizce.calismaapp.repository.UserRepository;
 import com.ingilizce.calismaapp.repository.WordRepository;
 import com.ingilizce.calismaapp.repository.WordReviewRepository;
 import org.slf4j.Logger;
@@ -37,6 +39,9 @@ public class ProgressService {
 
     @Autowired
     private WordReviewRepository reviewRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     /**
      * Get or create user progress
@@ -198,8 +203,18 @@ public class ProgressService {
     @Transactional
     public void unlockAchievement(Achievement achievement) {
         if (!isAchievementUnlocked(achievement)) {
-            UserAchievement userAchievement = new UserAchievement(
-                    DEFAULT_USER_ID, achievement.getCode());
+            // Varsayılan kullanıcıyı bul veya oluştur
+            @SuppressWarnings("null")
+            User user = userRepository.findById(Long.valueOf(DEFAULT_USER_ID))
+                    .orElseGet(() -> {
+                        User newUser = new User("default@example.com", "Default User", "temp_hash", "#00001");
+                        return userRepository.save(newUser);
+                    });
+
+            UserAchievement userAchievement = new UserAchievement(user, achievement.getCode());
+            userAchievement.setAchievementName(achievement.getTitle());
+            userAchievement.setAchievementDescription(achievement.getDescription());
+            userAchievement.setXpReward(achievement.getXpReward());
             achievementRepository.save(userAchievement);
             logger.info("Unlocked achievement: {}", achievement.getCode());
         }

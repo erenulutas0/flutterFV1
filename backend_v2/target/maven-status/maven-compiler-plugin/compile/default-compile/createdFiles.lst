@@ -11,6 +11,8 @@ com\ingilizce\calismaapp\entity\SentencePractice.class
 com\ingilizce\calismaapp\repository\WordReviewRepository.class
 com\ingilizce\calismaapp\controller\ApiController.class
 com\ingilizce\calismaapp\controller\SentencePracticeController.class
+com\ingilizce\calismaapp\entity\User.class
+com\ingilizce\calismaapp\entity\User$ProficiencyLevel.class
 com\ingilizce\calismaapp\repository\SentenceRepository.class
 com\ingilizce\calismaapp\service\PiperTtsService.class
 com\ingilizce\calismaapp\entity\WordReview.class

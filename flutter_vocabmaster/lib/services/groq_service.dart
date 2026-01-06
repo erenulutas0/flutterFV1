@@ -214,61 +214,118 @@ Be comprehensive - include ALL common meanings and word types for "$word".
   }
 
   /// Okuma parçası üretir (IELTS/TOEFL tarzı)
-  static Future<Map<String, dynamic>> generateReadingPassage(String level) async {
-    if (_apiKey.isEmpty) throw Exception('API Key yok');
+static Future<Map<String, dynamic>> generateReadingPassage(String level) async {
+  if (_apiKey.isEmpty) throw Exception('API Key yok');
 
-    final prompt = '''
-    Generate a short reading passage (about 150-200 words) for English learners at level $level. 
-    Topic: General academic or interesting facts (IELTS/TOEFL style).
-    Include 3 multiple choice questions (with 4 options and 1 correct answer).
-    Return ONLY valid JSON. 
-    Format:
-    {
-      "title": "Passage Title",
-      "text": "Full passage text here...",
-      "questions": [
-        {
-          "question": "Question 1?",
-          "options": ["A", "B", "C", "D"],
-          "correctAnswer": "A",
-          "explanation": "Brief explanation of why A is correct.",
-          "correctAnswerQuote": "Exact sentence or phrase from the text that proves the answer."
-        },
-        ...
-      ]
-    }
-    ''';
+  // Seviyeye göre parametre ayarları
+  final Map<String, Map<String, dynamic>> levelConfig = {
+    'Beginner': {
+      'wordCount': '80-120',
+      'sentences': 'very short and simple sentences (5-8 words)',
+      'vocabulary': 'basic everyday words, no idioms',
+      'topics': 'daily life (family, food, hobbies)',
+      'grammar': 'present simple tense only',
+      'questionDifficulty': 'direct, answer explicitly in text',
+    },
+    'Elementary': {
+      'wordCount': '120-160',
+      'sentences': 'short sentences with basic conjunctions (and, but, because)',
+      'vocabulary': 'common words, simple phrasal verbs',
+      'topics': 'travel, school, jobs, weather',
+      'grammar': 'present and past simple tenses',
+      'questionDifficulty': 'mostly direct, one inference question',
+    },
+    'Intermediate': {
+      'wordCount': '160-220',
+      'sentences': 'mix of simple and compound sentences',
+      'vocabulary': 'wider range, some topic-specific terms',
+      'topics': 'technology, health, environment, culture',
+      'grammar': 'various tenses, passive voice',
+      'questionDifficulty': 'mix of direct and inference questions',
+    },
+    'Upper-Intermediate': {
+      'wordCount': '220-280',
+      'sentences': 'complex sentences with subordinate clauses',
+      'vocabulary': 'academic vocabulary, idioms, collocations',
+      'topics': 'science, economics, social issues',
+      'grammar': 'conditionals, relative clauses, modal verbs',
+      'questionDifficulty': 'inference and analysis required',
+    },
+    'Advanced': {
+      'wordCount': '280-350',
+      'sentences': 'sophisticated sentence structures, varied length',
+      'vocabulary': 'advanced academic and specialized terms',
+      'topics': 'philosophy, politics, scientific research',
+      'grammar': 'all tenses, subjunctive, inversions',
+      'questionDifficulty': 'critical thinking and synthesis required',
+    },
+  };
 
-    try {
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_apiKey',
-        },
-        body: jsonEncode({
-          "model": "llama-3.3-70b-versatile",
-          "messages": [
-            {"role": "system", "content": "You are an exam preparation assistant. Return strictly valid JSON."},
-            {"role": "user", "content": prompt}
-          ],
-          "temperature": 0.5
-        }),
-      ).timeout(const Duration(seconds: 40));
+  // Default: Intermediate ayarlarını kullan
+  final config = levelConfig[level] ?? levelConfig['Intermediate']!;
 
-      if (response.statusCode == 200) {
-        final decodedBody = utf8.decode(response.bodyBytes);
-        final jsonResponse = jsonDecode(decodedBody);
-        final content = jsonResponse['choices'][0]['message']['content'];
-        
-        final cleanContent = content.toString().replaceAll('```json', '').replaceAll('```', '').trim();
-        return jsonDecode(cleanContent);
-      } else {
-        throw Exception('API Error: ${response.statusCode}');
+  final prompt = '''
+  Generate a reading passage for English learners. Strictly follow these constraints:
+
+  LEVEL: $level
+  WORD COUNT: ${config['wordCount']} words (strictly within this range)
+  SENTENCE STYLE: ${config['sentences']}
+  VOCABULARY: ${config['vocabulary']}
+  TOPIC CATEGORY: ${config['topics']}
+  GRAMMAR FOCUS: ${config['grammar']}
+  QUESTION STYLE: ${config['questionDifficulty']}
+
+  Topic: Choose a specific, interesting topic from the category above.
+  Include 3 multiple choice questions (with 4 options and 1 correct answer).
+  Return ONLY valid JSON. No markdown formatting, no extra text.
+  
+  Format:
+  {
+    "title": "Passage Title",
+    "text": "Full passage text here...",
+    "wordCount": <actual word count as integer>,
+    "questions": [
+      {
+        "question": "Question 1?",
+        "options": ["A", "B", "C", "D"],
+        "correctAnswer": "A",
+        "explanation": "Brief explanation of why A is correct.",
+        "correctAnswerQuote": "Exact sentence or phrase from the text that proves the answer."
       }
-    } catch (e) {
-      print('Error generating passage: $e');
-      rethrow;
-    }
+    ]
   }
+  ''';
+
+  try {
+    final response = await http.post(
+      Uri.parse(_baseUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $_apiKey',
+      },
+      body: jsonEncode({
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+          {"role": "system", "content": "You are a professional English exam preparation assistant. Generate content that EXACTLY matches the specified level constraints. Return strictly valid JSON with no markdown formatting."},
+          {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7 // Biraz daha çeşitlilik için
+      }),
+    ).timeout(const Duration(seconds: 45));
+
+    if (response.statusCode == 200) {
+      final decodedBody = utf8.decode(response.bodyBytes);
+      final jsonResponse = jsonDecode(decodedBody);
+      final content = jsonResponse['choices'][0]['message']['content'];
+      
+      final cleanContent = content.toString().replaceAll('```json', '').replaceAll('```', '').trim();
+      return jsonDecode(cleanContent);
+    } else {
+      throw Exception('API Error: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error generating passage: $e');
+    rethrow;
+  }
+}
 }

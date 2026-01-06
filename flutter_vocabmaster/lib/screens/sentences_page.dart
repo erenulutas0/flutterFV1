@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../widgets/animated_background.dart';
 import '../models/word.dart';
-import '../services/api_service.dart';
+import '../models/sentence_practice.dart';
+import '../models/sentence_view_model.dart';
+import '../services/offline_sync_service.dart';
 
 class SentencesPage extends StatefulWidget {
   const SentencesPage({Key? key}) : super(key: key);
@@ -12,13 +14,23 @@ class SentencesPage extends StatefulWidget {
 }
 
 class _SentencesPageState extends State<SentencesPage> {
-  final ApiService _apiService = ApiService();
+  final OfflineSyncService _offlineSyncService = OfflineSyncService();
   List<Word> allWords = [];
-  List<Sentence> allSentences = [];
-  List<Sentence> filteredSentences = [];
+  List<SentenceViewModel> allSentences = [];
+  List<SentenceViewModel> filteredSentences = [];
   bool isLoading = true;
+  bool _isOnline = true;
   String _activeFilter = 'Tümü'; // Tümü, Kolay, Orta, Zor
   final TextEditingController _searchController = TextEditingController();
+
+  // Add Sentence Dialog Controllers
+  final TextEditingController _newWordEnglishController = TextEditingController();
+  final TextEditingController _newWordTurkishController = TextEditingController();
+  final TextEditingController _newSentenceEnglishController = TextEditingController();
+  final TextEditingController _newSentenceTurkishController = TextEditingController();
+  bool _isAddingToDailyWords = false;
+  String _newSentenceDifficulty = 'Kolay';
+  bool _isAddingSentenceState = false;
 
   // Mapping sentence to its word for display meta-data
   final Map<int, Word> _sentenceToWordMap = {};
@@ -26,26 +38,71 @@ class _SentencesPageState extends State<SentencesPage> {
   @override
   void initState() {
     super.initState();
+    _isOnline = _offlineSyncService.isOnline;
     _loadData();
     _searchController.addListener(_filterSentences);
+    
+    // Online durumu dinle
+    _offlineSyncService.onlineStatus.listen((isOnline) {
+      if (mounted) {
+        setState(() => _isOnline = isOnline);
+        if (isOnline) {
+          _loadData(); // Online olunca yenile
+        }
+      }
+    });
   }
 
   Future<void> _loadData() async {
     try {
-      final words = await _apiService.getAllWords();
-      final List<Sentence> sentences = [];
+      final words = await _offlineSyncService.getAllWords();
+      final practiceSentences = await _offlineSyncService.getAllSentences();
+
+      final List<SentenceViewModel> viewModels = [];
+      final Set<int> seenIds = {};
+
+      // 1. Word Sentences
       for (var word in words) {
         for (var s in word.sentences) {
-          sentences.add(s);
-          // Assuming Sentence has an ID, or we use object identity if unique.
-          // Since existing Sentence model might not have unique ID across all, rely on object.
-          _sentenceToWordMap[s.hashCode] = word;
+          if (seenIds.contains(s.id)) continue;
+          seenIds.add(s.id);
+          
+          viewModels.add(SentenceViewModel(
+            id: s.id,
+            sentence: s.sentence,
+            translation: s.translation,
+            difficulty: s.difficulty ?? 'easy',
+            word: word,
+            isPractice: false,
+            date: word.learnedDate,
+          ));
         }
       }
+
+      // 2. Practice Sentences
+      for (var s in practiceSentences) {
+        // Deduplication: Only skip if it's NOT a practice-source sentence (e.g. it's a word sentence retrieved via allSentences)
+        // If source is 'practice', we keep it even if ID collides with a Word Sentence (different tables).
+        if (s.source != 'practice' && s.numericId != 0 && seenIds.contains(s.numericId)) continue;
+        
+        viewModels.add(SentenceViewModel(
+          id: s.id,
+          sentence: s.englishSentence,
+          translation: s.turkishTranslation,
+          difficulty: s.difficulty,
+          word: null,
+          isPractice: true,
+          date: s.createdDate ?? DateTime.now(),
+        ));
+      }
+
+      // Sort: Newest first (En yeni en başta)
+      viewModels.sort((a, b) => b.date.compareTo(a.date));
+
       setState(() {
         allWords = words;
-        allSentences = sentences;
-        filteredSentences = sentences;
+        allSentences = viewModels;
+        filteredSentences = viewModels;
         isLoading = false;
       });
     } catch (e) {
@@ -53,17 +110,18 @@ class _SentencesPageState extends State<SentencesPage> {
     }
   }
 
+
   void _filterSentences() {
     final query = _searchController.text.toLowerCase();
     
     setState(() {
-      filteredSentences = allSentences.where((s) {
-        final word = _sentenceToWordMap[s.hashCode];
-        final matchesQuery = s.sentence.toLowerCase().contains(query) || 
-                             s.translation.toLowerCase().contains(query);
+      filteredSentences = allSentences.where((vm) {
+        final matchesQuery = vm.sentence.toLowerCase().contains(query) || 
+                             vm.translation.toLowerCase().contains(query) ||
+                             (vm.word?.englishWord.toLowerCase().contains(query) ?? false);
                              
         final matchesFilter = _activeFilter == 'Tümü' || 
-                              (word != null && _mapDifficulty(word.difficulty) == _activeFilter);
+                              _mapDifficulty(vm.difficulty) == _activeFilter;
         
         return matchesQuery && matchesFilter;
       }).toList();
@@ -100,10 +158,33 @@ class _SentencesPageState extends State<SentencesPage> {
     }).length;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddNewSentenceDialog(),
-        backgroundColor: const Color(0xFF06b6d4),
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 100.0),
+        child: Container(
+          width: 65,
+          height: 65,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF00c6ff), Color(0xFF0072ff)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(35),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0072ff).withOpacity(0.4),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: FloatingActionButton(
+            onPressed: _showAddNewSentenceDialog,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: const Icon(Icons.add, color: Colors.white, size: 32),
+          ),
+        ),
       ),
       body: Stack(
         children: [
@@ -176,12 +257,37 @@ class _SentencesPageState extends State<SentencesPage> {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: filteredSentences.length,
                           itemBuilder: (context, index) {
-                            final sentence = filteredSentences[index];
-                            final word = _sentenceToWordMap[sentence.hashCode];
+                            final vm = filteredSentences[index];
                             return SentenceCard(
-                              sentence: sentence,
-                              word: word,
+                              vm: vm,
                               mapDifficulty: _mapDifficulty,
+                              onDelete: () async {
+                                try {
+                                  if (vm.isPractice) {
+                                     await _offlineSyncService.deletePracticeSentence(vm.id);
+                                  } else {
+                                     if (vm.word != null) {
+                                        await _offlineSyncService.deleteSentenceFromWord(
+                                          wordId: vm.word!.id,
+                                          sentenceId: vm.id,
+                                        );
+                                     }
+                                  }
+                                  
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Cümle silindi!'), backgroundColor: Colors.green)
+                                    );
+                                    _loadData();
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red)
+                                    );
+                                  }
+                                }
+                              },
                             );
                           },
                         ),
@@ -292,206 +398,428 @@ class _SentencesPageState extends State<SentencesPage> {
     );
   }
   void _showAddNewSentenceDialog() {
+    // Reset controllers
+    _newWordEnglishController.clear();
+    _newWordTurkishController.clear();
+    _newSentenceEnglishController.clear();
+    _newSentenceTurkishController.clear();
+    setState(() {
+      _isAddingToDailyWords = false;
+      _newSentenceDifficulty = 'Kolay';
+      _isAddingSentenceState = false;
+    });
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: '',
-      pageBuilder: (context, anim1, anim2) => Container(),
+      barrierLabel: 'Dismiss',
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, anim1, anim2) => const SizedBox(),
       transitionBuilder: (context, anim1, anim2, child) {
         return FadeTransition(
           opacity: anim1,
           child: ScaleTransition(
             scale: anim1,
-            child: Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    width: MediaQuery.of(context).size.width,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0f172a).withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: const Color(0xFF06b6d4).withOpacity(0.5), 
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF06b6d4).withOpacity(0.15),
-                          blurRadius: 20,
-                        ),
-                      ],
-                    ),
-                    child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Yeni Cümle Ekle',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Kelime seçerek veya seçmeden cümle\nekleyebilirsiniz',
-                                style: TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white54),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      // Kelime Seçimi
-                      const Text(
-                        'Kelime Seçimi (Opsiyonel)',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(child: _buildTextField('İngilizce kelime')),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildTextField('Türkçe anlamı')),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Checkbox section
-                      Container(
-                        padding: const EdgeInsets.all(12),
+            child: StatefulBuilder(
+              builder: (context, setStateDialog) {
+                return Dialog(
+                  backgroundColor: Colors.transparent,
+                  insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 400),
+                        width: MediaQuery.of(context).size.width,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withOpacity(0.1)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Colors.white24),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Bugünün Kelimelerine Ekle',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                ),
-                                Text(
-                                  'Önce kelime ve anlamını girin',
-                                  style: TextStyle(color: Colors.white38, fontSize: 11),
-                                ),
-                              ],
+                          color: const Color(0xFF0f172a).withOpacity(0.75),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 30,
+                              spreadRadius: 5,
                             ),
                           ],
                         ),
-                      ),
-                      
-                      const SizedBox(height: 24),
-                      const Text('İngilizce Cümle', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      _buildTextField('İngilizce cümle yazın...'),
-                      
-                      const SizedBox(height: 16),
-                      const Text('Türkçe Anlamı', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      _buildTextField('Türkçe anlamı yazın...'),
-                      
-                      const SizedBox(height: 16),
-                      const Text('Zorluk Seviyesi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      _buildDifficultyDropdown(),
-                      
-                      const SizedBox(height: 40),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('İptal', style: TextStyle(color: Colors.white70)),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Container(
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF06b6d4),
-                                borderRadius: BorderRadius.circular(12),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Yeni Cümle Ekle',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Kelime seçerek veya seçmeden cümle ekleyebilirsiniz',
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(0.6),
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.close, color: Colors.white54),
+                                    onPressed: () => Navigator.pop(context),
+                                  ),
+                                ],
                               ),
-                              child: ElevatedButton.icon(
-                                onPressed: () => Navigator.pop(context),
-                                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                                label: const Text(
-                                  'Cümle Ekle',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                              const SizedBox(height: 24),
+                              Container(height: 1, color: Colors.white.withOpacity(0.1)),
+                              const SizedBox(height: 24),
+
+                              // Kelime Seçimi
+                              const Text(
+                                'Kelime Seçimi (Opsiyonel)',
+                                style: TextStyle(
+                                  color: Colors.white, 
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(child: _buildDialogTextField(_newWordEnglishController, 'İngilizce kelime')),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: _buildDialogTextField(_newWordTurkishController, 'Türkçe anlamı')),
+                                ],
+                              ),
+                              
+                              const SizedBox(height: 16),
+                              
+                              // Checkbox section
+                              GestureDetector(
+                                onTap: () {
+                                  setStateDialog(() => _isAddingToDailyWords = !_isAddingToDailyWords);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: _isAddingToDailyWords 
+                                        ? const Color(0xFF0072ff).withOpacity(0.15) 
+                                        : Colors.white.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: _isAddingToDailyWords 
+                                          ? const Color(0xFF0072ff).withOpacity(0.5) 
+                                          : Colors.white.withOpacity(0.1)
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          color: _isAddingToDailyWords ? const Color(0xFF0072ff) : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: _isAddingToDailyWords 
+                                              ? null 
+                                              : Border.all(color: Colors.white54, width: 2),
+                                        ),
+                                        child: _isAddingToDailyWords 
+                                            ? const Icon(Icons.check, size: 16, color: Colors.white) 
+                                            : null,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Bugünün Kelimelerine Ekle',
+                                              style: TextStyle(
+                                                color: _isAddingToDailyWords ? const Color(0xFF60a5fa) : Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              'Önce kelime ve anlamını girin',
+                                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
                               ),
-                            ),
+                              
+                              const SizedBox(height: 24),
+                              
+                              const Text('İngilizce Cümle', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              _buildDialogTextField(_newSentenceEnglishController, 'İngilizce cümle yazın...'),
+                              
+                              const SizedBox(height: 16),
+                              const Text('Türkçe Anlamı', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              _buildDialogTextField(_newSentenceTurkishController, 'Türkçe anlamı yazın...'),
+                              
+                              const SizedBox(height: 16),
+                              const Text('Zorluk Seviyesi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              _buildDialogDifficultyDropdown(setStateDialog),
+                              
+                              const SizedBox(height: 32),
+                              
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: 50,
+                                      child: OutlinedButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        style: OutlinedButton.styleFrom(
+                                          side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                        child: const Text('İptal', style: TextStyle(color: Colors.white70)),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Container(
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Color(0xFF00c6ff), Color(0xFF0072ff)],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF0072ff).withOpacity(0.3),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: ElevatedButton.icon(
+                                        onPressed: _isAddingSentenceState 
+                                            ? null 
+                                            : () => _handleAddNewSentence(context, setStateDialog),
+                                        icon: _isAddingSentenceState 
+                                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                                            : const Icon(Icons.add, color: Colors.white, size: 20),
+                                        label: Text(
+                                          _isAddingSentenceState ? 'Ekleniyor' : 'Cümle Ekle',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          shadowColor: Colors.transparent,
+                                          padding: EdgeInsets.zero,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDialogTextField(TextEditingController controller, String hint) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF00c6ff)),
         ),
       ),
     );
-  },
+  }
+
+  Widget _buildDialogDifficultyDropdown(StateSetter setStateDialog) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _newSentenceDifficulty,
+          isExpanded: true,
+          dropdownColor: const Color(0xFF1e1b4b),
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white54),
+          items: ['Kolay', 'Orta', 'Zor'].map((String value) {
+            Color itemColor = Colors.white;
+            if (value == 'Kolay') itemColor = Colors.greenAccent;
+            if (value == 'Orta') itemColor = Colors.amberAccent;
+            if (value == 'Zor') itemColor = Colors.redAccent;
+
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Row(
+                children: [
+                  Container(
+                    width: 8, height: 8,
+                    decoration: BoxDecoration(color: itemColor, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(value),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val != null) {
+              setStateDialog(() => _newSentenceDifficulty = val);
+            }
+          },
+        ),
+      ),
     );
   }
+
+  Future<void> _handleAddNewSentence(BuildContext context, StateSetter setStateDialog) async {
+    final sentence = _newSentenceEnglishController.text.trim();
+    final translation = _newSentenceTurkishController.text.trim();
+    final word = _newWordEnglishController.text.trim();
+    
+    if (sentence.isEmpty || translation.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cümle ve anlamı gerekli.')));
+      return;
+    }
+
+    setStateDialog(() => _isAddingSentenceState = true);
+
+    try {
+      String diff = 'easy';
+      if (_newSentenceDifficulty == 'Orta') diff = 'medium';
+      if (_newSentenceDifficulty == 'Zor') diff = 'hard';
+
+      if (!_isAddingToDailyWords) {
+           await _offlineSyncService.createSentence(
+             englishSentence: sentence,
+             turkishTranslation: translation,
+             difficulty: diff
+           );
+      } else {
+          int? wordId;
+          String targetWord = word.isEmpty ? "General" : word;
+          
+          final existingWord = allWords.firstWhere(
+            (w) => w.englishWord.toLowerCase() == targetWord.toLowerCase(),
+            orElse: () => Word(id: -1, englishWord: '', turkishMeaning: '', learnedDate: DateTime.now(), difficulty: 'easy', sentences: [])
+          );
+
+          if (existingWord.id != -1) {
+             wordId = existingWord.id;
+          } else {
+             final dialogMeaning = _newWordTurkishController.text.trim().isEmpty ? 'Genel' : _newWordTurkishController.text.trim();
+             final newWord = await _offlineSyncService.createWord(
+                english: targetWord,
+                turkish: dialogMeaning,
+                addedDate: DateTime.now(),
+                difficulty: 'medium'
+             );
+             wordId = newWord?.id;
+          }
+          
+          if (wordId != null && wordId != 0) {
+             await _offlineSyncService.addSentenceToWord(
+                wordId: wordId,
+                sentence: sentence,
+                translation: translation,
+                difficulty: diff
+             );
+          }
+      }
+
+      // Başarılı
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cümle başarıyla eklendi!'), backgroundColor: Colors.green)
+        );
+        _loadData();
+      }
+
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red));
+      }
+    } finally {
+      if (mounted) {
+        setStateDialog(() => _isAddingSentenceState = false);
+      }
+    }
+  }
+
 }
 
 class SentenceCard extends StatefulWidget {
-  final Sentence sentence;
-  final Word? word;
+  final SentenceViewModel vm;
   final String Function(String) mapDifficulty;
+  final VoidCallback? onDelete;
 
   const SentenceCard({
     Key? key,
-    required this.sentence,
-    required this.word,
+    required this.vm,
     required this.mapDifficulty,
+    this.onDelete,
   }) : super(key: key);
 
   @override
@@ -503,30 +831,32 @@ class _SentenceCardState extends State<SentenceCard> {
 
   @override
   Widget build(BuildContext context) {
-    final wordText = widget.word?.englishWord ?? '';
-    final difficulty = widget.word != null ? widget.mapDifficulty(widget.word!.difficulty) : 'Orta';
+    final wordText = widget.vm.word?.englishWord ?? '';
+    final difficulty = widget.mapDifficulty(widget.vm.difficulty);
     
-    final sentenceText = widget.sentence.sentence;
+    final sentenceText = widget.vm.sentence;
     final lowerSentence = sentenceText.toLowerCase();
     final lowerWord = wordText.toLowerCase();
-    final index = lowerSentence.indexOf(lowerWord);
+    final int index = (wordText.isNotEmpty) ? lowerSentence.indexOf(lowerWord) : -1;
     
     List<InlineSpan> spans = [];
-    if (index != -1 && wordText.isNotEmpty) {
+    if (index != -1) {
       // Before the word
-      spans.add(TextSpan(
-        text: sentenceText.substring(0, index),
-        style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.5),
-      ));
+      if (index > 0) {
+        spans.add(TextSpan(
+          text: sentenceText.substring(0, index),
+          style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.5),
+        ));
+      }
       
-      // The highlighted word (WidgetSpan for badge effect)
+      // The highlighted word
       spans.add(WidgetSpan(
         alignment: PlaceholderAlignment.middle,
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFF0ea5e9).withOpacity(0.3), // Blue/Cyan highlight
+            color: const Color(0xFF0ea5e9).withOpacity(0.3),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: const Color(0xFF0ea5e9).withOpacity(0.5)),
             boxShadow: [
@@ -537,7 +867,7 @@ class _SentenceCardState extends State<SentenceCard> {
             ],
           ),
           child: Text(
-            sentenceText.substring(index, index + wordText.length), // Case sensitive original text
+            sentenceText.substring(index, index + wordText.length),
             style: const TextStyle(
               color: Colors.cyanAccent, 
               fontSize: 18, 
@@ -548,10 +878,12 @@ class _SentenceCardState extends State<SentenceCard> {
       ));
       
       // After the word
-      spans.add(TextSpan(
-        text: sentenceText.substring(index + wordText.length),
-        style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.5),
-      ));
+      if (index + wordText.length < sentenceText.length) {
+        spans.add(TextSpan(
+          text: sentenceText.substring(index + wordText.length),
+          style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.5),
+        ));
+      }
     } else {
       spans.add(TextSpan(
         text: sentenceText,
@@ -559,7 +891,6 @@ class _SentenceCardState extends State<SentenceCard> {
       ));
     }
 
-    // Determine badge color based on difficulty
     Color badgeColor;
     Color badgeBgColor;
     
@@ -628,55 +959,91 @@ class _SentenceCardState extends State<SentenceCard> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline, color: Colors.white54, size: 20),
-                      onPressed: () {
-                        // Silme fonksiyonu eklenebilir
-                      },
+                      onPressed: widget.onDelete != null ? () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            backgroundColor: const Color(0xFF1e1b4b),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(Icons.delete_forever, color: Colors.red, size: 24),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text('Cümleyi Sil', style: TextStyle(color: Colors.white, fontSize: 18)),
+                              ],
+                            ),
+                            content: const Text(
+                              'Bu cümleyi silmek istediğinize emin misiniz?',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('İptal', style: TextStyle(color: Colors.white54)),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  widget.onDelete!();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                child: const Text('Sil', style: TextStyle(color: Colors.white)),
+                              ),
+                            ],
+                          ),
+                        );
+                      } : null,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
                 
-                // Sentence Text with Highlight
+                const SizedBox(height: 16),
+                
+                // Sentence with Highlight
                 RichText(
-                  text: TextSpan(children: spans),
+                  text: TextSpan(
+                    children: spans,
+                    style: const TextStyle(height: 1.5),
+                  ),
                 ),
                 
-                const SizedBox(height: 8),
-                if(widget.word != null)
-                   Text(
-                      widget.word!.turkishMeaning, 
-                       style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
-                   ),
-      
-                const SizedBox(height: 20),
-                
-                // Shows translation box OR placeholder
+                // Meaning (Collapsible)
                 AnimatedCrossFade(
-                  firstChild: Container(), 
-                  secondChild: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1e3a8a).withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF38bdf8).withOpacity(0.3)),
-                      boxShadow: [
-                         BoxShadow(
-                           color: const Color(0xFF38bdf8).withOpacity(0.1),
-                           blurRadius: 12,
-                         )
+                  firstChild: const SizedBox(height: 0),
+                  secondChild: Padding(
+                    padding: const EdgeInsets.only(top: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(height: 1, color: Colors.white.withOpacity(0.1)),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            const Icon(Icons.translate, color: Colors.white54, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(
+                              widget.vm.translation, // Use VM translation
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            )),
+                          ],
+                        ),
                       ],
-                    ),
-                    child: Text(
-                      widget.sentence.translation,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
                     ),
                   ),
                   crossFadeState: _isMeaningVisible ? CrossFadeState.showSecond : CrossFadeState.showFirst,

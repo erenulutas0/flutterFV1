@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/animated_background.dart';
-import '../services/api_service.dart';
-import '../models/word.dart';
+import '../services/user_data_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/info_dialog.dart';
 import 'chat_list_page.dart';
 import 'chat_detail_page.dart';
@@ -22,7 +22,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   bool showInstructions = false;
   bool isLoading = true;
-  final ApiService _apiService = ApiService();
+  final UserDataService _userDataService = UserDataService();
+  final AuthService _authService = AuthService();
 
   // User data
   Map<String, dynamic> user = {
@@ -47,12 +48,10 @@ class _HomePageState extends State<HomePage> {
     {'day': 'Sun', 'learned': false, 'count': 0},
   ];
 
-  final List<Map<String, dynamic>> onlineUsers = [
-    {'id': 1, 'name': 'Ayşe K.', 'level': 8, 'status': 'online', 'avatar': '👩'},
-    {'id': 2, 'name': 'Mehmet Y.', 'level': 12, 'status': 'online', 'avatar': '👨'},
-    {'id': 3, 'name': 'Sarah J.', 'level': 6, 'status': 'online', 'avatar': '👱‍♀️'},
-    {'id': 4, 'name': 'Carlos M.', 'level': 10, 'status': 'online', 'avatar': '👨‍🦱'},
-  ];
+  // Çevrimiçi kullanıcılar - gerçek sistem olmadığı için boş başlar
+  List<Map<String, dynamic>> onlineUsers = [];
+
+  String _userName = 'Kullanıcı';
 
   @override
   void initState() {
@@ -62,81 +61,21 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadData() async {
     try {
-      final allWords = await _apiService.getAllWords();
-      final totalWords = allWords.length;
-      final xp = totalWords * 10;
-      final level = (xp / 100).floor() + 1;
+      // Kullanıcı adını al
+      final authUser = await _authService.getUser();
+      final displayName = authUser?['displayName'] ?? 'Kullanıcı';
       
-      // Calculate learned today
-      final now = DateTime.now();
-      final todayStr = now.toIso8601String().split('T')[0];
-      final learnedToday = allWords.where((w) => 
-        w.learnedDate.toIso8601String().split('T')[0] == todayStr
-      ).length;
-
-      // Calculate streak
-      final dates = (await _apiService.getAllDistinctDates()).toSet();
-      int streak = 0;
-      DateTime date = now;
-      while (true) {
-        final dStr = date.toIso8601String().split('T')[0];
-        if (dates.contains(dStr)) {
-          streak++;
-          date = date.subtract(const Duration(days: 1));
-        } else {
-          // If today is 0, checking yesterday might continue the streak?
-          // For simplicity, strict streak: if today/yesterday missed, it breaks.
-          if (dStr == todayStr && streak == 0) {
-             date = date.subtract(const Duration(days: 1));
-             continue; // Allow skipping today if checking late at night and haven't done it yet
-          }
-          break;
-        }
-      }
-
-      // Calculate weekly activity
-      final List<Map<String, dynamic>> newCalendar = [];
-      // Start from Monday of current week? Or last 7 days? 
-      // UI shows Mon-Sun. Let's find this week's Monday.
-      
-      // Find Monday
-      DateTime monday = now.subtract(Duration(days: now.weekday - 1));
-      int weeklyWords = 0;
-
-      for (int i = 0; i < 7; i++) {
-        final dayDate = monday.add(Duration(days: i));
-        final dayStr = dayDate.toIso8601String().split('T')[0];
-        final count = allWords.where((w) => 
-          w.learnedDate.toIso8601String().split('T')[0] == dayStr
-        ).length;
-        
-        weeklyWords += count;
-        
-        final dayName = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i];
-        
-        newCalendar.add({
-          'day': dayName,
-          'learned': count > 0,
-          'count': count,
-        });
-      }
-
-      final weeklyXP = weeklyWords * 10;
+      // UserDataService'den hesaba özel verileri al
+      final stats = await _userDataService.getAllStats();
+      final newCalendar = await _userDataService.getWeeklyActivity();
+      final online = await _userDataService.getOnlineUsers();
 
       if (mounted) {
         setState(() {
-          user = {
-            'name': 'Kullanıcı', // Could fetch from profile if available
-            'level': level,
-            'xp': xp,
-            'xpToNextLevel': level * 100, // naive next level
-            'totalWords': totalWords,
-            'streak': streak,
-            'weeklyXP': weeklyXP,
-            'dailyGoal': 5,
-            'learnedToday': learnedToday,
-          };
+          _userName = displayName;
+          user = stats;
           calendar = newCalendar;
+          onlineUsers = online;
           isLoading = false;
         });
       }
@@ -235,7 +174,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       child: ClipOval(
                         child: Image.network(
-                          'https://api.dicebear.com/7.x/avataaars/png?seed=Eren',
+                          'https://api.dicebear.com/7.x/avataaars/png?seed=${_userName.replaceAll(' ', '')}',
                           fit: BoxFit.cover,
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
@@ -283,9 +222,9 @@ class _HomePageState extends State<HomePage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Welcome, Eren',
-                      style: TextStyle(
+                    Text(
+                      'Welcome, $_userName',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -787,25 +726,28 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${onlineUsers.length} Çevrimiçi',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
+              if (onlineUsers.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${onlineUsers.length} Çevrimiçi',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
           Text(
-            'Diğer kullanıcılarla İngilizce pratiği yapın ve arkadaşlar edinin!',
+            onlineUsers.isEmpty 
+              ? 'Şu anda çevrimiçi kullanıcı yok. Yeni arkadaşlar ekleyerek pratik yapabilirsiniz!'
+              : 'Diğer kullanıcılarla İngilizce pratiği yapın ve arkadaşlar edinin!',
             style: TextStyle(
               color: Colors.white.withOpacity(0.7),
               fontSize: 13,

@@ -1,0 +1,32 @@
+Launching lib\main.dart on SM S911B in debug mode...
+Running Gradle task 'assembleDebug'...                             10,6s
+ÔêÜ Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...          37,1s
+W/FlutterWebRTCPlugin(11287): audioFocusChangeListener [Earpiece(name=Earpiece)] Earpiece(name=Earpiece)
+W/FlutterWebRTCPlugin(11287): audioFocusChangeListener [Speakerphone(name=Speakerphone), Earpiece(name=Earpiece)] Speakerphone(name=Speakerphone)
+Syncing files to device SM S911B...                                109ms
+
+Flutter run key commands.
+r Hot reload. 
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on SM S911B is available at: http://127.0.0.1:51416/jwsgURfGntM=/
+The Flutter DevTools debugger and profiler on SM S911B is available at: http://127.0.0.1:9100?uri=http://127.0.0.1:51416/jwsgURfGntM=/
+I/VRI[MainActivity]@75cbbe1(11287): onDisplayChanged oldDisplayState=4 newDisplayState=3
+I/VRI[MainActivity]@75cbbe1(11287): onDisplayChanged oldDisplayState=3 newDisplayState=4
+D/ProfileInstaller(11287): Installing profile for com.ingilizce.calismaapp
+D/ConnectivityManager(11287): StackLog: [android.net.ConnectivityManager.sendRequestForNetwork(ConnectivityManager.java:4736)] [android.net.ConnectivityManager.registerDefaultNetworkCallbackForUid(ConnectivityManager.java:5461)] [android.net.ConnectivityManager.registerDefaultNetworkCallback(ConnectivityManager.java:5428)] [android.net.ConnectivityManager.registerDefaultNetworkCallback(ConnectivityManager.java:5402)] [dev.fluttercommunity.plus.connectivity.ConnectivityBroadcastReceiver.onListen(ConnectivityBroadcastReceiver.java:77)] [io.flutter.plugin.common.EventChannel$IncomingStreamRequestHandler.onListen(EventChannel.java:218)] [io.flutter.plugin.common.EventChannel$IncomingStreamRequestHandler.onMessage(EventChannel.java:197)] [io.flutter.embedding.engine.dart.DartMessenger.invokeHandler(DartMessenger.java:292)] [io.flutter.embedding.engine.dart.DartMessenger.lambda$dispatchMessageToQueue$0$io-flutter-embedding-engine-dart-DartMessenger(DartMessenger.java:319)] [io.flutter.embedding.engine.dart.DartMessenger$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)]
+I/flutter (11287): ­şôÂ Ba─şlant─▒ geri geldi, senkronizasyon ba┼şlat─▒l─▒yor...
+I/flutter (11287): ­şöä Senkronizasyon ba┼şlat─▒ld─▒...
+I/izce.calismaapp(11287): Background concurrent mark compact GC freed 14MB AllocSpace bytes, 8(224KB) LOS objects, 89% free, 2868KB/26MB, paused 37.952ms,43.502ms total 478.661ms
+I/izce.calismaapp(11287): Compiler allocated 5101KB to compile void android.view.ViewRootImpl.performTraversals()
+I/flutter (11287): ­şôØ 0 bekleyen i┼şlem bulundu
+I/VRI[MainActivity]@75cbbe1(11287): onDisplayChanged oldDisplayState=4 newDisplayState=3
+I/VRI[MainActivity]@75cbbe1(11287): onDisplayChanged oldDisplayState=3 newDisplayState=4
+I/VRI[MainActivity]@75cbbe1(11287): onDisplayChanged oldDisplayState=4 newDisplayState=3
+I/VRI[MainActivity]@75cbbe1(11287): onDisplayChanged oldDisplayState=3 newDisplayState=4
+Lost connection to device.

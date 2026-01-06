@@ -20,11 +20,18 @@ import 'screens/profile_page.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/global_state.dart';
+import 'services/offline_sync_service.dart';
 import 'widgets/global_matching_indicator.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+  
+  // Offline sync service başlat
+  final offlineSyncService = OfflineSyncService();
+  await offlineSyncService.initialize();
+  await offlineSyncService.initialDataLoad();
+  
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
