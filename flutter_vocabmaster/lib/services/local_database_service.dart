@@ -229,6 +229,7 @@ class LocalDatabaseService {
     final localId = -DateTime.now().millisecondsSinceEpoch;
     
     await db.insert('words', {
+      'id': localId,
       'localId': localId,
       'englishWord': english,
       'turkishMeaning': turkish,
@@ -284,6 +285,7 @@ class LocalDatabaseService {
     final localId = -DateTime.now().millisecondsSinceEpoch;
     
     await db.insert('sentences', {
+      'id': localId,
       'localId': localId,
       'wordId': wordId > 0 ? wordId : null,
       'localWordId': wordId < 0 ? wordId : null,
