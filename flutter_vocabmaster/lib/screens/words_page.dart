@@ -411,43 +411,105 @@ class _WordsPageState extends State<WordsPage> {
   }
 
   void _showDeleteWordConfirmDialog(Word word) {
-    showDialog(
+    showGeneralDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1e1b4b),
-        title: const Text('Kelimeyi Sil', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Bu kelimeyi silmek istediğinize emin misiniz? Buna bağlı tüm cümleler de kalıcı olarak silinecektir.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('İptal', style: TextStyle(color: Colors.white54)),
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, _, __) => const SizedBox(),
+      transitionBuilder: (context, anim, __, child) {
+        return Transform.scale(
+          scale: anim.value,
+          child: Opacity(
+            opacity: anim.value,
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0f172a).withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFF06b6d4).withOpacity(0.3)),
+                      boxShadow: [
+                         BoxShadow(color: const Color(0xFF06b6d4).withOpacity(0.1), blurRadius: 20),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 32),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Kelimeyi Sil',
+                          style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Bu kelimeyi silmek istediğinize emin misiniz? Buna bağlı tüm cümleler de kalıcı olarak silinecektir.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('İptal', style: TextStyle(color: Colors.white60)),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  Navigator.pop(context);
+                                  try {
+                                    await _offlineSyncService.deleteWord(word.id);
+                                    if (mounted) {
+                                       ScaffoldMessenger.of(context).showSnackBar(
+                                         const SnackBar(content: Text('Kelime ve cümleleri silindi!'), backgroundColor: Colors.green)
+                                       );
+                                       _loadWordsForDate(_selectedDate);
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                       ScaffoldMessenger.of(context).showSnackBar(
+                                         SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red)
+                                       );
+                                    }
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.redAccent,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                                child: const Text('Sil'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context); // Close dialog
-              try {
-                await _offlineSyncService.deleteWord(word.id);
-                if (mounted) {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                     const SnackBar(content: Text('Kelime ve cümleleri silindi!'), backgroundColor: Colors.green)
-                   );
-                   _loadWordsForDate(_selectedDate);
-                }
-              } catch (e) {
-                if (mounted) {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                     SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red)
-                   );
-                }
-              }
-            },
-            child: const Text('Sil', style: TextStyle(color: Colors.redAccent)),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -503,7 +565,7 @@ class _WordsPageState extends State<WordsPage> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
+              padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1050,21 +1112,36 @@ class _WordsPageState extends State<WordsPage> {
                                       });
                                     },
                                     wordId: word.id,
-                                    onDelete: () async {
+                                    onDelete: (bool deleteGlobally) async {
                                       try {
+                                        // If NOT deleting globally, we must save it as a Practice Sentence before removing from Word
+                                        if (!deleteGlobally) {
+                                          await _offlineSyncService.createSentence(
+                                            englishSentence: sentence.sentence,
+                                            turkishTranslation: sentence.translation,
+                                            difficulty: sentence.difficulty ?? 'easy',
+                                          );
+                                        }
+
+                                        // Always remove from the current Word
                                         await _offlineSyncService.deleteSentenceFromWord(
                                           wordId: word.id,
                                           sentenceId: sentence.id,
                                         );
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Cümle silindi!'), backgroundColor: Colors.green)
-                                        );
-                                        Navigator.pop(context); // Dialog'u kapat
-                                        _loadWordsForDate(_selectedDate); // Listeyi yenile
+                                        
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('İşlem başarıyla tamamlandı!'), backgroundColor: Colors.green)
+                                          );
+                                          Navigator.pop(context); // Dialog'u kapat
+                                          _loadWordsForDate(_selectedDate); // Listeyi yenile
+                                        }
                                       } catch (e) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red)
-                                        );
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red)
+                                          );
+                                        }
                                       }
                                     },
                                   );
@@ -1130,7 +1207,7 @@ class _WordsPageState extends State<WordsPage> {
     );
   }
 
-  Widget _buildSentenceCard(Sentence sentence, String targetWord, bool showTranslation, VoidCallback onToggle, {int? wordId, VoidCallback? onDelete}) {
+  Widget _buildSentenceCard(Sentence sentence, String targetWord, bool showTranslation, VoidCallback onToggle, {int? wordId, Function(bool)? onDelete}) {
     Color badgeColor = Colors.green;
     String badgeText = 'KOLAY';
     
@@ -1275,49 +1352,124 @@ class _WordsPageState extends State<WordsPage> {
   void _showDeleteConfirmDialog({
     required String title,
     required String message,
-    required VoidCallback onConfirm,
+    required Function(bool) onConfirm,
   }) {
-    showDialog(
+    bool deleteGlobally = false;
+
+    showGeneralDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1e1b4b),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.delete_forever, color: Colors.red, size: 24),
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, _, __) => const SizedBox(),
+      transitionBuilder: (context, anim, __, child) {
+        return Transform.scale(
+          scale: anim.value,
+          child: Opacity(
+            opacity: anim.value,
+            child: StatefulBuilder(
+              builder: (context, setStateDialog) {
+                return Dialog(
+                  backgroundColor: Colors.transparent,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0f172a).withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: const Color(0xFF06b6d4).withOpacity(0.3)),
+                          boxShadow: [
+                             BoxShadow(color: const Color(0xFF06b6d4).withOpacity(0.1), blurRadius: 20),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                               decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 32),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              title,
+                              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              message,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+                            ),
+                            const SizedBox(height: 16),
+                            
+                            // Checkbox Option
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                              ),
+                              child: CheckboxListTile(
+                                value: deleteGlobally,
+                                onChanged: (val) {
+                                  setStateDialog(() => deleteGlobally = val ?? false);
+                                },
+                                title: const Text(
+                                  'Cümleler sayfasından da sil',
+                                  style: TextStyle(color: Colors.white, fontSize: 14),
+                                ),
+                                checkColor: Colors.white,
+                                activeColor: const Color(0xFF06b6d4),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                controlAffinity: ListTileControlAffinity.leading,
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 24),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('İptal', style: TextStyle(color: Colors.white60)),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      onConfirm(deleteGlobally);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.redAccent,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                    ),
+                                    child: const Text('Sil'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-            const SizedBox(width: 12),
-            Text(title, style: const TextStyle(color: Colors.white, fontSize: 18)),
-          ],
-        ),
-        content: Text(
-          message,
-          style: TextStyle(color: Colors.white.withOpacity(0.8)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('İptal', style: TextStyle(color: Colors.white54)),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              onConfirm();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Sil', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
